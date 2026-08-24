@@ -7,11 +7,17 @@ name: CI
 # required status check. A workflow skipped by a `paths:` filter never reports at
 # all: its checks sit pending forever and a pull request that requires them can
 # never merge.
+#
+# The trigger covers every branch, not just main and pull requests. This
+# repository is trunk-based and does not use pull requests: work happens on a
+# branch, is merged locally with --no-ff, and main is pushed. A workflow that
+# only fired on `pull_request` and `push: [main]` would therefore never run
+# before a merge — "push the branch and wait for green" would wait forever, and
+# the first CI run of any change would be the one after it had already landed.
 on:
+  push:
   pull_request:
     types: [opened, synchronize, reopened]
-  push:
-    branches: [main]
 
 permissions:
   contents: read
