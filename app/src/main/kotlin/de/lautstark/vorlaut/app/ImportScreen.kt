@@ -16,6 +16,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,6 +40,8 @@ import de.lautstark.vorlaut.boardpackage.SymbolSource
 fun ImportScreen(
     state: ImportUiState,
     onPickFile: () -> Unit,
+    onOpen: (PackageStore.Entry) -> Unit,
+    onShowWarnings: (PackageStore.Entry) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -80,7 +83,7 @@ fun ImportScreen(
         }
 
         items(state.stored, key = { it.boardPackage.id }) { entry ->
-            PackageCard(entry)
+            PackageCard(entry, onOpen = { onOpen(entry) }, onShowWarnings = { onShowWarnings(entry) })
         }
     }
 }
@@ -137,11 +140,23 @@ private fun Notice(
 }
 
 @Composable
-private fun PackageCard(entry: PackageStore.Entry) {
+private fun PackageCard(
+    entry: PackageStore.Entry,
+    onOpen: () -> Unit,
+    onShowWarnings: () -> Unit,
+) {
     val pkg = entry.boardPackage
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(pkg.name, style = MaterialTheme.typography.titleMedium)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = onOpen) { Text("Open") }
+                // SPEC.md 9.3: reachable later, from where the package is managed
+                // — not only in the moment it was imported.
+                TextButton(onClick = onShowWarnings) {
+                    Text(if (entry.warnings.isEmpty()) "Warnings" else "Warnings (${entry.warnings.size})")
+                }
+            }
             // Two packages may share a name, so the id is shown rather than hidden:
             // it is the only thing that tells them apart.
             Field("Package id", pkg.id)
