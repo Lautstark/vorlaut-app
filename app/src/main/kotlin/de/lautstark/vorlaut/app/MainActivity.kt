@@ -12,7 +12,22 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
+
+/** Where the app is. Three places, and no library needed to say so. */
+private sealed interface Route {
+    data object Packages : Route
+
+    data object Board : Route
+
+    data class Warnings(
+        val packageId: String,
+    ) : Route
+}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -35,15 +50,62 @@ class MainActivity : ComponentActivity() {
                 consumeIncoming(intent)?.let(model::importFrom)
             }
 
+            val boardModel: BoardViewModel = viewModel()
+            val boardState by boardModel.state.collectAsState()
+            var route by remember { mutableStateOf<Route>(Route.Packages) }
+
             MaterialTheme {
                 Scaffold { padding ->
-                    ImportScreen(
-                        state = state,
-                        onPickFile = { picker.launch(IMPORTABLE_TYPES) },
-                        modifier =
-                            androidx.compose.ui.Modifier
-                                .padding(padding),
-                    )
+                    val inset = Modifier.padding(padding)
+                    when (val here = route) {
+                        Route.Packages -> {
+                            ImportScreen(
+                                state = state,
+                                onPickFile = { picker.launch(IMPORTABLE_TYPES) },
+                                onOpen = { entry ->
+                                    boardModel.open(
+                                        entry.boardPackage,
+                                        entry.warnings,
+                                        entry.archive.readBytes(),
+                                    )
+                                    route = Route.Board
+                                },
+                                onShowWarnings = { entry ->
+                                    route = Route.Warnings(entry.boardPackage.id)
+                                },
+                                modifier = inset,
+                            )
+                        }
+
+                        Route.Board -> {
+                            TalkerScreen(
+                                state = boardState,
+                                media = boardModel.mediaLoader(),
+                                onPress = boardModel::press,
+                                onOpenWarnings = {
+                                    route = Route.Warnings(boardState.boardPackage?.id.orEmpty())
+                                },
+                                onClosePackage = {
+                                    boardModel.close()
+                                    route = Route.Packages
+                                },
+                                modifier = inset,
+                            )
+                        }
+
+                        is Route.Warnings -> {
+                            val entry = state.stored.firstOrNull { it.boardPackage.id == here.packageId }
+                            WarningsScreen(
+                                packageName = entry?.boardPackage?.name.orEmpty(),
+                                warnings = entry?.warnings.orEmpty(),
+                                onBack = {
+                                    route =
+                                        if (boardState.boardPackage == null) Route.Packages else Route.Board
+                                },
+                                modifier = inset,
+                            )
+                        }
+                    }
                 }
             }
         }
