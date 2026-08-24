@@ -43,10 +43,12 @@ a stale fixture passes forever — which is the one failure this arrangement exi
 to avoid. A spec change has to surface as a failing build, not as silent
 divergence.
 
-> **The pin is not set yet.** The spec repository was renamed and no
-> `exchange-v1.0.0` tag is cut, so there is no stable ref to pin. Until a commit
-> SHA is recorded, the conformance suite cannot run in CI. See
-> [`docs/exchange-pin.md`](docs/exchange-pin.md).
+The pin is `5ffeb579bccefc71e7b63f2e19008440df0c3179`, recorded as `exchange.sha` in
+[`gradle.properties`](gradle.properties). Moving it is a deliberate change with a
+test run attached, never a routine bump — see
+[`docs/exchange-pin.md`](docs/exchange-pin.md).
+
+All 13 fixtures pass.
 
 ## Building
 
@@ -61,6 +63,13 @@ The parser's own suite, which is the fast one and the one that matters:
 
 ```bash
 ./gradlew :boardpackage:test
+```
+
+To develop against an unreleased change to the spec, point the build at a local
+checkout instead. This is for local work only and is not a pin:
+
+```bash
+./gradlew build -Pexchange.localPath=$HOME/Code/vorlaut/exchange
 ```
 
 ## Licence
