@@ -46,6 +46,21 @@ dependencies {
     implementation(libs.compose.ui)
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.coroutines.android)
-    implementation(libs.documentfile)
     implementation(libs.lifecycle.viewmodel.compose)
+
+    testImplementation(libs.junit)
+}
+
+// The app's unit tests use the same conformance fixtures as the parser's, and
+// get them the same way: fetched at the pinned commit, never copied in.
+tasks.withType<Test>().configureEach {
+    dependsOn(":boardpackage:provideExchangeFixtures")
+    systemProperty(
+        "exchange.fixtures",
+        project(":boardpackage")
+            .layout.buildDirectory
+            .dir("exchange/fixtures")
+            .get()
+            .asFile.absolutePath,
+    )
 }

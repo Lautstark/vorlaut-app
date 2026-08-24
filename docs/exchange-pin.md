@@ -47,6 +47,19 @@ with the run:
 ./gradlew :boardpackage:test
 ```
 
+## Blocked fixtures
+
+`ConformanceTest.blocked` names fixtures that are not self-consistent and are
+therefore not asserted against. Right now that is `multipage`, whose `.obz` and
+`.expected.json` contradict each other — the package renders a third button that
+the expectation does not list. The reason is written out in full at the entry.
+
+A blocked fixture is **not** a skipped one. Each entry is checked to still be
+failing, so the day the fixture is corrected upstream the suite goes red and says
+which block to remove. Removing one has to be a deliberate act rather than
+something that happens by drift, which is the same reason the fixtures are pinned
+rather than copied.
+
 ## Working against a local checkout
 
 While developing against an unreleased spec, point the build at a working tree

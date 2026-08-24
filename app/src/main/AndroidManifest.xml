@@ -28,6 +28,47 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+            <!--
+              Opening a .obz from a file manager, a download, or a messaging app.
+
+              Both the media type SPEC.md 2 gives the format and the one providers
+              actually report for an unregistered extension are matched, plus a
+              path pattern for the cases where a provider offers no type at all.
+              An over-broad filter is the right trade here: a file that turns out
+              not to be a board package is refused by the importer with a reason
+              the person can act on, whereas a filter too narrow to see the file
+              leaves them with no way in at all.
+            -->
+            <intent-filter android:label="@string/import_board_package">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:mimeType="application/zip" />
+                <data android:mimeType="application/x-zip-compressed" />
+            </intent-filter>
+            <intent-filter android:label="@string/import_board_package">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:host="*" />
+                <data android:mimeType="application/octet-stream" />
+                <data android:pathPattern=".*\\.obz" />
+                <data android:pathPattern=".*\\..*\\.obz" />
+            </intent-filter>
+
+            <!-- Sharing a package to the app from elsewhere. -->
+            <intent-filter android:label="@string/import_board_package">
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="application/zip" />
+                <data android:mimeType="application/x-zip-compressed" />
+                <data android:mimeType="application/octet-stream" />
+            </intent-filter>
         </activity>
 
     </application>

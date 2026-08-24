@@ -4,7 +4,6 @@ kotlin = "2.4.10"
 activityCompose = "1.13.0"
 composeBom = "2026.08.00"
 coroutines = "1.11.0"
-documentfile = "1.1.0"
 junit = "4.13.2"
 lifecycle = "2.11.0"
 serialization = "1.9.0"
@@ -17,7 +16,6 @@ compose-material3 = { module = "androidx.compose.material3:material3" }
 compose-ui = { module = "androidx.compose.ui:ui" }
 compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
 coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
-documentfile = { module = "androidx.documentfile:documentfile", version.ref = "documentfile" }
 junit = { module = "junit:junit", version.ref = "junit" }
 lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
 # kotlinx-serialization rather than org.json: org.json is a stub on Android and a

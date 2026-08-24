@@ -64,6 +64,8 @@ jobs:
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
       - name: Assemble debug build
         run: ./gradlew :app:assembleDebug
+      - name: Run app unit tests
+        run: ./gradlew :app:testDebugUnitTest
       - name: Run Android lint
         run: ./gradlew :app:lintDebug
       - name: Upload lint report

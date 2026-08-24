@@ -45,8 +45,15 @@ divergence.
 
 > **The pin is not set yet.** The spec repository was renamed and no
 > `exchange-v1.0.0` tag is cut, so there is no stable ref to pin. Until a commit
-> SHA is recorded, the conformance suite cannot run in CI. See
-> [`docs/exchange-pin.md`](docs/exchange-pin.md).
+> SHA is recorded in `exchange.sha`, the fixture-fetch step fails with a clear
+> message and **CI cannot be green** — deliberately, because a conformance suite
+> that quietly does nothing when its inputs are missing is the same silent
+> divergence a stale copy causes. See [`docs/exchange-pin.md`](docs/exchange-pin.md).
+
+One fixture, `multipage`, is on a named blocked list: its `.obz` and its
+`.expected.json` contradict each other, so no importer can satisfy both. The
+block is checked to still be failing, so correcting the fixture upstream turns
+the suite red and names the block to remove.
 
 ## Building
 
@@ -61,6 +68,12 @@ The parser's own suite, which is the fast one and the one that matters:
 
 ```bash
 ./gradlew :boardpackage:test
+```
+
+While the pin is unset, point the build at a local checkout of the spec:
+
+```bash
+./gradlew build -Pexchange.localPath=$HOME/Code/vorlaut-diy-talker/exchange
 ```
 
 ## Licence
