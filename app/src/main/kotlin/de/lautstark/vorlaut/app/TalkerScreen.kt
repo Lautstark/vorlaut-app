@@ -38,9 +38,15 @@ fun TalkerScreen(
     onPress: (de.lautstark.vorlaut.boardpackage.Button) -> Unit,
     onOpenWarnings: () -> Unit,
     onClosePackage: () -> Unit,
+    handedOver: Boolean,
+    pinningUnavailable: Boolean,
+    onHandOver: () -> Unit,
+    onFixPinning: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val board = state.board ?: return
+    // The board, and only the board, holds the screen awake.
+    KeepScreenOn(enabled = true)
     Column(modifier.fillMaxSize()) {
         MessageBarView(
             entries = state.entries,
@@ -48,6 +54,10 @@ fun TalkerScreen(
             warningCount = state.warnings.size,
             onOpenWarnings = onOpenWarnings,
             onClosePackage = onClosePackage,
+            handedOver = handedOver,
+            pinningUnavailable = pinningUnavailable,
+            onHandOver = onHandOver,
+            onFixPinning = onFixPinning,
         )
         Box(Modifier.fillMaxSize().weight(1f)) {
             BoardScreen(board = board, state = state, media = media, onPress = onPress)
@@ -62,6 +72,10 @@ private fun MessageBarView(
     warningCount: Int,
     onOpenWarnings: () -> Unit,
     onClosePackage: () -> Unit,
+    handedOver: Boolean,
+    pinningUnavailable: Boolean,
+    onHandOver: () -> Unit,
+    onFixPinning: () -> Unit,
 ) {
     Column(
         Modifier
@@ -70,7 +84,11 @@ private fun MessageBarView(
             .padding(horizontal = 8.dp, vertical = 6.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = onClosePackage) { Text("‹ Packages") }
+            // Same control either way, so the way out is always in the same
+            // place. Pinned, it asks for the PIN first; loose, it just leaves.
+            TextButton(onClick = onClosePackage) {
+                Text(if (handedOver) "🔒 Locked" else "‹ Packages")
+            }
             Text(
                 packageName,
                 style = MaterialTheme.typography.labelMedium,
@@ -82,6 +100,31 @@ private fun MessageBarView(
             // a list nobody knows is there is one nobody opens.
             if (warningCount > 0) {
                 WarningChip(warningCount, onOpenWarnings)
+            }
+            if (!handedOver) {
+                TextButton(onClick = onHandOver) { Text("Hand over") }
+            }
+        }
+        if (handedOver && pinningUnavailable) {
+            // Said plainly rather than swallowed. The PIN below still guards the
+            // way out through the app, but without Android's own pinning the
+            // Home and Overview buttons still work, and a caregiver who thinks
+            // otherwise has been misled by this screen.
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 6.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.errorContainer)
+                    .padding(8.dp),
+            ) {
+                Text(
+                    "The PIN is set, but Android's app pinning is switched off, so Home and " +
+                        "Overview still leave this board.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                )
+                TextButton(onClick = onFixPinning) { Text("Open Android's security settings") }
             }
         }
         Box(

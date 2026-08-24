@@ -12,10 +12,12 @@ import de.lautstark.vorlaut.boardpackage.ImportWarning
 import de.lautstark.vorlaut.boardpackage.MessageBar
 import de.lautstark.vorlaut.boardpackage.OnActivate
 import de.lautstark.vorlaut.boardpackage.PackageArchive
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Drives one open package: which board is showing, what is in the message bar,
@@ -40,13 +42,30 @@ class BoardViewModel(
 
     fun mediaLoader(): BoardMedia = media
 
+    /**
+     * Opens a stored package.
+     *
+     * The archive is read on a worker. A package may be tens of megabytes, and
+     * reading it on the main thread is the same mistake as preparing audio there:
+     * invisible on the small fixtures, a stall on a real vocabulary.
+     */
     fun open(
         boardPackage: BoardPackage,
         warnings: List<ImportWarning>,
-        archiveBytes: ByteArray,
+        archive: java.io.File,
     ) {
-        media.clear()
-        media = BoardMedia(PackageArchive.open(archiveBytes))
+        viewModelScope.launch {
+            val loaded = withContext(Dispatchers.IO) { PackageArchive.open(archive.readBytes()) }
+            media.clear()
+            media = BoardMedia(loaded)
+            finishOpening(boardPackage, warnings)
+        }
+    }
+
+    private fun finishOpening(
+        boardPackage: BoardPackage,
+        warnings: List<ImportWarning>,
+    ) {
         bar = MessageBar()
         val root = boardPackage.boards.firstOrNull { it.id == boardPackage.rootBoardId }
         speech.configureVoice(boardPackage.ttsVoice, root?.locale)

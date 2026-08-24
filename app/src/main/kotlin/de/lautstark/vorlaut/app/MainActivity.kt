@@ -5,18 +5,22 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.launch
 
 /** Where the app is. Three places, and no library needed to say so. */
 private sealed interface Route {
@@ -54,6 +58,81 @@ class MainActivity : ComponentActivity() {
             val boardState by boardModel.state.collectAsState()
             var route by remember { mutableStateOf<Route>(Route.Packages) }
 
+            val handover = remember { Handover(applicationContext) }
+            // Two separate things. `handedOver` is this app's own guard and always
+            // works; `pinned` is Android's, which needs a system setting the app
+            // cannot turn on. Keeping them apart is what lets the screen be honest
+            // about which protections are actually in force.
+            var handedOver by remember { mutableStateOf(handover.isHandedOver) }
+            var pinned by remember { mutableStateOf(handover.isPinnedToScreen()) }
+            var prompt by remember { mutableStateOf<PinPurpose?>(null) }
+
+            var pinBusy by remember { mutableStateOf(false) }
+            var pinWrong by remember { mutableStateOf(false) }
+            val scope = rememberCoroutineScope()
+
+            prompt?.let { purpose ->
+                PinPrompt(
+                    purpose = purpose,
+                    busy = pinBusy,
+                    wrong = pinWrong,
+                    onDismiss = {
+                        prompt = null
+                        pinWrong = false
+                    },
+                    onSubmit = { entered ->
+                        pinWrong = false
+                        pinBusy = true
+                        scope.launch {
+                            when (purpose) {
+                                PinPurpose.Choose -> {
+                                    if (PinHash.isAcceptable(entered)) {
+                                        handover.setPin(entered)
+                                        handover.pinToScreen(this@MainActivity)
+                                        pinned = handover.isPinnedToScreen()
+                                        handedOver = true
+                                        handover.isHandedOver = true
+                                        prompt = null
+                                    } else {
+                                        pinWrong = true
+                                    }
+                                }
+
+                                PinPurpose.Unlock -> {
+                                    if (handover.verify(entered)) {
+                                        handover.releaseScreen(this@MainActivity)
+                                        pinned = false
+                                        handedOver = false
+                                        handover.isHandedOver = false
+                                        prompt = null
+                                        boardModel.close()
+                                        route = Route.Packages
+                                    } else {
+                                        pinWrong = true
+                                    }
+                                }
+                            }
+                            pinBusy = false
+                        }
+                    },
+                )
+            }
+
+            // A restart while the tablet is handed over lands back on the board it
+            // was on. Coming back to the package list would put a child in front
+            // of the one screen that can reach other apps, at the moment nobody is
+            // watching — which is the situation this whole feature is for.
+            LaunchedEffect(state.stored, handedOver) {
+                if (handedOver && route == Route.Packages) {
+                    state.stored
+                        .firstOrNull { it.boardPackage.id == handover.lastPackageId }
+                        ?.let { entry ->
+                            boardModel.open(entry.boardPackage, entry.warnings, entry.archive)
+                            route = Route.Board
+                        }
+                }
+            }
+
             MaterialTheme {
                 Scaffold { padding ->
                     val inset = Modifier.padding(padding)
@@ -63,10 +142,11 @@ class MainActivity : ComponentActivity() {
                                 state = state,
                                 onPickFile = { picker.launch(IMPORTABLE_TYPES) },
                                 onOpen = { entry ->
+                                    handover.lastPackageId = entry.boardPackage.id
                                     boardModel.open(
                                         entry.boardPackage,
                                         entry.warnings,
-                                        entry.archive.readBytes(),
+                                        entry.archive,
                                     )
                                     route = Route.Board
                                 },
@@ -78,6 +158,10 @@ class MainActivity : ComponentActivity() {
                         }
 
                         Route.Board -> {
+                            // Back is one of the ordinary ways out, so while the app
+                            // is pinned it costs the same PIN the button does.
+                            // Unpinned, it behaves as it always did.
+                            BackHandler(enabled = handedOver) { prompt = PinPurpose.Unlock }
                             TalkerScreen(
                                 state = boardState,
                                 media = boardModel.mediaLoader(),
@@ -86,8 +170,37 @@ class MainActivity : ComponentActivity() {
                                     route = Route.Warnings(boardState.boardPackage?.id.orEmpty())
                                 },
                                 onClosePackage = {
-                                    boardModel.close()
-                                    route = Route.Packages
+                                    // Pinned, the way out costs a PIN. Loose, it
+                                    // does not — a caregiver who has not handed the
+                                    // tablet over should not have to unlock their
+                                    // way back to a list they were just on.
+                                    if (handedOver) {
+                                        prompt = PinPurpose.Unlock
+                                    } else {
+                                        boardModel.close()
+                                        route = Route.Packages
+                                    }
+                                },
+                                handedOver = handedOver,
+                                pinningUnavailable = !pinned,
+                                onHandOver = {
+                                    if (handover.isPinSet) {
+                                        handover.pinToScreen(this@MainActivity)
+                                        pinned = handover.isPinnedToScreen()
+                                        handedOver = true
+                                        handover.isHandedOver = true
+                                    } else {
+                                        prompt = PinPurpose.Choose
+                                    }
+                                },
+                                onFixPinning = {
+                                    // No public intent opens App pinning directly;
+                                    // security settings is the nearest door.
+                                    runCatching {
+                                        startActivity(
+                                            Intent(android.provider.Settings.ACTION_SECURITY_SETTINGS),
+                                        )
+                                    }
                                 },
                                 modifier = inset,
                             )
