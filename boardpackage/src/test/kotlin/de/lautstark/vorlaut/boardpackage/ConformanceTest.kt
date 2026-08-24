@@ -20,42 +20,22 @@ class ConformanceTest {
      * be failing, so the day the fixture is fixed upstream this suite goes red and
      * says so — removing a block has to be a deliberate act, not something that
      * happens by drift.
+     *
+     * Empty, and worth keeping that way. `multipage` sat here while its `.obz` and
+     * its `.expected.json` disagreed about board `essen`; the generator was
+     * building the package and the expectation from two sibling literals rather
+     * than one, so they could drift and byte-reproducibility could not catch it.
+     * Fixed upstream, and this list emptied because the guard below demanded it.
      */
-    private val blocked =
-        mapOf(
-            "multipage" to
-                """
-                multipage.obz and multipage.expected.json contradict each other, so no importer
-                can satisfy both.
-
-                  boards/food.obf declares board `essen` as rows 1, columns 3, with
-                  order [["e1","e3","e2"]] and a button e3 (label "Café",
-                  image_id "img-cafe" -> images/café.png). e3 is not hidden and the
-                  grid is internally consistent, so SPEC.md 7.1 renders it.
-
-                  multipage.expected.json declares `essen` as rows 1, columns 2 and
-                  lists only e1 and e2.
-
-                The package is almost certainly the correct half: the expectation's own
-                notes discuss "Button e3 and its image images/café.png", and the spec
-                README credits this fixture with covering "a non-ASCII member" - which is
-                only reachable through e3. As written, the expectation makes the fixture
-                cover nothing non-ASCII at all.
-
-                It is not ours to pick a winner. SPEC.md 13's "the fixture is normative"
-                rule resolves prose against fixtures, and this is fixture against fixture.
-                Reported upstream; the fix is in exchange/tools/make_fixtures.mjs, whose
-                `members` and `expected` are two sibling literals rather than one.
-                """.trimIndent(),
-        )
+    private val blocked = emptyMap<String, String>()
 
     @Test
     fun `every fixture in the index is accounted for`() {
         val index = Fixtures.index()
-        // The spec README says "all 11" in one sentence and "12 packages" in its
-        // table; SPEC.md 13 says twelve and the index has twelve. The index is the
-        // machine-readable one and step 1 of the contract, so it decides.
-        assertEquals("fixture count changed under the pin", 12, index.size)
+        // The index is the machine-readable list and step 1 of the contract, so it
+        // decides how many there are. Pinned as a tripwire: fixtures appearing or
+        // vanishing under a pin is exactly the change that must not pass quietly.
+        assertEquals("fixture count changed under the pin", 13, index.size)
         val unknownBlocks = blocked.keys - index.map { it.name }.toSet()
         assertTrue(
             "blocked fixtures that no longer exist: $unknownBlocks",
@@ -192,27 +172,40 @@ class ConformanceTest {
         result: ImportResult.Accepted,
         mismatches: Mismatches,
     ) {
-        // Compared as a set keyed on (code, board, button). `detail` is prose for a
-        // human and its wording is expected to drift, so it is never compared.
+        // An ordered list, not a set. SPEC.md 9.5 makes the sequence part of the
+        // format, and `warning-order` exists to pin it: every warning in that
+        // fixture would also be produced by an importer emitting them in some other
+        // sequence, so a set comparison passes while still shuffling a
+        // caregiver-facing list between imports. `detail` is still never compared —
+        // it is prose for a human and its wording will drift.
         val wanted =
-            expected
-                .array("warnings")
-                .orEmpty()
-                .filterIsInstance<JsonObject>()
-                .map {
-                    Triple(it.string("code"), it.string("board"), it.string("button"))
-                }.toSet()
+            expected.array("warnings").orEmpty().filterIsInstance<JsonObject>().map {
+                Triple(it.string("code"), it.string("board"), it.string("button"))
+            }
         val actual =
-            result.warnings
-                .map {
-                    Triple(it.code.wireName, it.boardId, it.buttonId)
-                }.toSet()
+            result.warnings.map {
+                Triple(it.code.wireName, it.boardId, it.buttonId)
+            }
 
-        (wanted - actual).forEach { missing ->
-            mismatches.check(false) { "expected warning $missing, which was not raised" }
+        if (wanted == actual) return
+        if (wanted.toSet() == actual.toSet()) {
+            mismatches.check(false) {
+                "the right warnings in the wrong order (SPEC.md 9.5)\n" +
+                    "      expected: " + wanted.joinToString("\n                ") { render(it) } +
+                    "\n      actual:   " + actual.joinToString("\n                ") { render(it) }
+            }
+            return
         }
-        (actual - wanted).forEach { extra ->
-            mismatches.check(false) { "unexpected warning $extra" }
+        (wanted - actual.toSet()).forEach { missing ->
+            mismatches.check(false) { "expected warning ${render(missing)}, which was not raised" }
         }
+        (actual - wanted.toSet()).forEach { extra ->
+            mismatches.check(false) { "unexpected warning ${render(extra)}" }
+        }
+    }
+
+    private fun render(warning: Triple<String?, String?, String?>): String {
+        val place = listOfNotNull(warning.second, warning.third).joinToString("/").ifEmpty { "package" }
+        return "${warning.first} [$place]"
     }
 }

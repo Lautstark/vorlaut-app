@@ -43,17 +43,12 @@ a stale fixture passes forever — which is the one failure this arrangement exi
 to avoid. A spec change has to surface as a failing build, not as silent
 divergence.
 
-> **The pin is not set yet.** The spec repository was renamed and no
-> `exchange-v1.0.0` tag is cut, so there is no stable ref to pin. Until a commit
-> SHA is recorded in `exchange.sha`, the fixture-fetch step fails with a clear
-> message and **CI cannot be green** — deliberately, because a conformance suite
-> that quietly does nothing when its inputs are missing is the same silent
-> divergence a stale copy causes. See [`docs/exchange-pin.md`](docs/exchange-pin.md).
+The pin is `5ffeb579bccefc71e7b63f2e19008440df0c3179`, recorded as `exchange.sha` in
+[`gradle.properties`](gradle.properties). Moving it is a deliberate change with a
+test run attached, never a routine bump — see
+[`docs/exchange-pin.md`](docs/exchange-pin.md).
 
-One fixture, `multipage`, is on a named blocked list: its `.obz` and its
-`.expected.json` contradict each other, so no importer can satisfy both. The
-block is checked to still be failing, so correcting the fixture upstream turns
-the suite red and names the block to remove.
+All 13 fixtures pass.
 
 ## Building
 
@@ -70,10 +65,11 @@ The parser's own suite, which is the fast one and the one that matters:
 ./gradlew :boardpackage:test
 ```
 
-While the pin is unset, point the build at a local checkout of the spec:
+To develop against an unreleased change to the spec, point the build at a local
+checkout instead. This is for local work only and is not a pin:
 
 ```bash
-./gradlew build -Pexchange.localPath=$HOME/Code/vorlaut-diy-talker/exchange
+./gradlew build -Pexchange.localPath=$HOME/Code/vorlaut/exchange
 ```
 
 ## Licence

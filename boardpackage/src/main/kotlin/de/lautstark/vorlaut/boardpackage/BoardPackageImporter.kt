@@ -212,7 +212,7 @@ object BoardPackageImporter {
                     rootBoardId = rootBoardId,
                     boards = boards,
                 ),
-            warnings = warnings.build(),
+            warnings = warnings.ordered(rootBoardId, boards),
         )
     }
 
@@ -516,14 +516,17 @@ object BoardPackageImporter {
 }
 
 /**
- * Collects warnings in the order the importer meets them.
+ * Collects warnings, then puts them in the order SPEC.md 9.5 requires.
  *
- * SPEC.md does not actually require a warning order, and the fixtures compare
- * warnings as a set keyed on `(code, board, button)`. This preserves visit order
- * anyway - package-scoped first, then board by board in `paths.boards` order, then
- * cell by cell in row-major grid order - so that two runs over the same package
- * produce the same list. A caregiver-facing list that reshuffles itself between
- * imports is one nobody can compare against what they saw last time.
+ * That order is part of the format: two importers reading the same package must
+ * produce the same sequence, and the same importer must produce it again on
+ * re-import. The reason is not fussiness. This list is caregiver-facing and it is
+ * how somebody finds out which buttons on a child's device are incomplete — if it
+ * reshuffles between imports, a person comparing it against what they saw last
+ * week cannot tell a new fault from a moved line, and the list stops being read.
+ *
+ * Collecting in visit order and sorting at the end, rather than emitting in the
+ * final order, keeps the pipeline free to meet warnings whenever it meets them.
  */
 internal class WarningList {
     private val collected = ArrayList<ImportWarning>()
@@ -537,5 +540,44 @@ internal class WarningList {
         collected += ImportWarning(code, boardId, buttonId, detail)
     }
 
-    fun build(): List<ImportWarning> = collected.toList()
+    /**
+     * SPEC.md 9.5, in its four steps:
+     *
+     * 1. package-scoped warnings first (`board` null);
+     * 2. then board by board — **the root board first**, then every other board id
+     *    in code point order. Root first because it is the page the user actually
+     *    opens; code point rather than `paths.boards` order because an importer
+     *    should not have to rely on JSON object key order;
+     * 3. within a board, board-scoped warnings (`button` null) first, then per
+     *    button in `grid.order` row-major order — reading order, not the order
+     *    buttons happen to appear in `buttons[]`;
+     * 4. ties on one button in code point order of `code`.
+     *
+     * The sort is stable, so anything the rules leave genuinely equal keeps the
+     * order it was met in and stays reproducible.
+     */
+    fun ordered(
+        rootBoardId: String,
+        boards: List<Board>,
+    ): List<ImportWarning> {
+        // Reading order of each board's cells. First occurrence wins, so a button
+        // id repeated in the grid is ranked where it is first met.
+        val readingOrder: Map<String, Map<String, Int>> =
+            boards.associate { board ->
+                val positions = LinkedHashMap<String, Int>()
+                board.cells.flatten().forEachIndexed { index, id ->
+                    if (id != null) positions.putIfAbsent(id, index)
+                }
+                board.id to positions
+            }
+
+        return collected.sortedWith(
+            compareBy<ImportWarning> { if (it.boardId == null) 0 else 1 }
+                .thenBy { if (it.boardId == null || it.boardId == rootBoardId) 0 else 1 }
+                .thenBy { it.boardId.orEmpty() }
+                .thenBy { if (it.buttonId == null) 0 else 1 }
+                .thenBy { readingOrder[it.boardId]?.get(it.buttonId) ?: Int.MAX_VALUE }
+                .thenBy { it.code.wireName },
+        )
+    }
 }
