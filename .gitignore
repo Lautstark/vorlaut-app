@@ -1,0 +1,28 @@
+# Secrets
+*.key
+*.pem
+*.p12
+*.jks
+*.keystore
+local.properties
+keystore.properties
+
+# Android / Gradle
+.gradle/
+.kotlin/
+.idea/
+build/
+**/build/
+*.iml
+captures/
+*.apk
+*.aab
+gradle-daemon-jvm.properties
+
+# The exchange fixtures are fetched at a pinned commit, never committed here.
+# See docs/exchange-pin.md - a copy stops tracking the spec the moment either
+# side changes, and a stale fixture passes forever.
+/build/exchange/
+
+# macOS
+.DS_Store

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Nothing this app stores may be backed up to the cloud or transferred to another
+  device, and that is a licensing requirement rather than a preference.
+
+  SPEC.md 5.2: a package marked non-redistributable must not be offered for
+  export, sharing, backup upload, or any other path that moves its bytes off the
+  device. Android's automatic cloud backup is exactly such a path, and it is on by
+  default - so an imported METACOM package would be uploaded without anyone
+  choosing it.
+
+  The rules exclude everything rather than just the package directory. The
+  constraint has to outlive the import and survive whoever adds the next feature,
+  and an allow-list that someone widens later is how it stops being true.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="root" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </device-transfer>
+</data-extraction-rules>
