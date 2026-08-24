@@ -50,6 +50,24 @@ test run attached, never a routine bump — see
 
 All 13 fixtures pass.
 
+### And one package the builder actually wrote
+
+The fixtures say this importer reads the format. They cannot say that it reads
+what the one program writing packages in real life produces — vorlaut validates
+its output against its own reading of `SPEC.md`, and this suite validates
+fixtures against the same document, so both can pass and still not meet.
+
+So one real export is committed, at
+[`boardpackage/src/test/resources/builder/`](boardpackage/src/test/resources/builder/),
+and `BuilderPackageTest` opens it. It is a sample rather than a fixture — it
+tracks nothing and is re-cut when the export changes, which is why it may live
+here at all. Its README says how to cut a new one.
+
+The first run of it found a defect neither side could see: every board said
+`locale: "en"` over German sentences, because the builder took that field from
+its own page language. On a tablet that is a German board read aloud in an
+English voice. Fixed in vorlaut-diy-talker@3006e38.
+
 ## Building
 
 Requires JDK 21 and an Android SDK with API 37. `local.properties` needs an
