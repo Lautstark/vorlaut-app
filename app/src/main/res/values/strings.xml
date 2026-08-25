@@ -1,5 +1,81 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  German is the default locale, not English.
+
+  Its siblings are bilingual behind a picker and this app should end up there
+  too, but the base language is the one its users speak: these are German
+  boards, built by German-speaking families, on a device handed to a German-
+  speaking child. bildhaft made the same call for the same kind of reason.
+  values-en/ carries the English.
+-->
 <resources>
-    <string name="app_name">Vorlaut</string>
-    <string name="import_board_package">Import board package</string>
+    <!-- The product name, and the same word in every language. -->
+    <string name="app_name" translatable="false">Vorlaut</string>
+    <string name="import_board_package">Sammlung öffnen</string>
+
+    <string name="add_collection">Sammlung hinzufügen</string>
+    <string name="settings">Einstellungen</string>
+    <string name="back">Zurück</string>
+    <string name="hand_over">Übergeben</string>
+
+    <string name="empty_headline">Noch keine Sammlung auf diesem Gerät.</string>
+    <string name="empty_body">Eine Sammlung kommt als .obz-Datei aus dem Editor. Öffne sie aus den Dateien, teile sie mit dieser App, oder hol sie unten herein.</string>
+    <string name="empty_footnote">Ohne Sammlung hat dieses Gerät nichts zu sagen.</string>
+
+    <string name="not_redistributable">nicht weitergeben</string>
+    <!--
+      Plurals rather than one format string: "1 Tafeln" is simply wrong, and a
+      viewer whose first Sammlung has one board would have shown it on the very
+      first screen anybody sees. Two quantities cannot share one plural, so the
+      two halves are separate and joined by the separator below.
+    -->
+    <plurals name="boards">
+        <item quantity="one">%d Tafel</item>
+        <item quantity="other">%d Tafeln</item>
+    </plurals>
+    <plurals name="buttons">
+        <item quantity="one">%d Taste</item>
+        <item quantity="other">%d Tasten</item>
+    </plurals>
+    <plurals name="warnings_count">
+        <item quantity="one">%d Warnung</item>
+        <item quantity="other">%d Warnungen</item>
+    </plurals>
+    <string name="dot_separator" translatable="false">" · "</string>
+    <string name="added">„%1$s“ hinzugefügt.</string>
+    <string name="replaced">„%1$s“ ersetzt.</string>
+    <string name="not_newer">„%1$s“ ist nicht neuer als die gespeicherte Fassung und wurde nicht übernommen.</string>
+    <string name="refused">%1$s: %2$s</string>
+    <string name="nothing_missing_body">Jede Taste hat, was sie versprochen hat.</string>
+    <string name="warnings_intro">Diese Sammlung funktioniert. Ändern kann das nur, wer sie gebaut hat — die Reihenfolge unten ist die, in der es auf der Tafel steht.</string>
+    <string name="no_warnings">Nichts fehlt in dieser Sammlung.</string>
+
+    <string name="speak">Sprechen</string>
+    <string name="undo">Rückgängig</string>
+    <string name="clear">Leeren</string>
+    <string name="leave_board">Lange drücken, um die Tafel zu verlassen</string>
+
+    <string name="pin_choose_title">PIN wählen</string>
+    <string name="pin_choose_body">Mindestens vier Ziffern. Damit kommst du wieder aus der Tafel heraus, wenn das Tablet aus der Hand gegeben ist — nimm etwas, worüber du nicht nachdenken musst.</string>
+    <string name="pin_enter_title">PIN eingeben</string>
+    <string name="pin_enter_body">Damit wird die Tafel verlassen und das Tablet wieder freigegeben.</string>
+    <string name="pin_set">PIN setzen</string>
+    <string name="pin_unlock">Entsperren</string>
+    <string name="pin_wrong">Das ist nicht die PIN.</string>
+    <string name="cancel">Abbrechen</string>
+
+    <string name="pinning_off">Die PIN ist gesetzt, aber Androids App-Fixierung ist ausgeschaltet — die Home- und Übersichtstaste verlassen die Tafel weiterhin.</string>
+    <string name="open_security_settings">Android-Sicherheitseinstellungen öffnen</string>
+    <string name="w_image_missing">A picture is missing. The button shows its label only.</string>
+    <string name="w_image_oversized">A picture is too large to show, so the button has none.</string>
+    <string name="w_image_undecodable">A picture could not be read, so the button has none.</string>
+    <string name="w_sound_missing">A recording is missing. The button speaks in the device voice.</string>
+    <string name="w_sound_undecodable">A recording could not be read. The button speaks in the device voice.</string>
+    <string name="w_sound_too_long">A recording is longer than 30 seconds. The button speaks in the device voice.</string>
+    <string name="w_action_unsupported">This button asks for something this viewer cannot do, so it is switched off.</string>
+    <string name="w_button_missing">The board has a gap where a button was meant to be.</string>
+    <string name="w_path_normalization">A file inside the collection is named unusually. It was found anyway.</string>
+    <string name="w_path_conflict">The collection disagrees with itself about where a file lives.</string>
+    <string name="w_image_reference_ignored">A picture also pointed somewhere online. The one in the collection was used.</string>
+    <string name="w_color_unparseable">A colour could not be read, so the standard one was used.</string>
 </resources>

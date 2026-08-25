@@ -20,6 +20,16 @@ class MessageBar {
     data class Entry(
         val display: String?,
         val spoken: String?,
+        /**
+         * The symbol that was pressed, and the tint it was pressed on.
+         *
+         * The bar renders pictures, not text: the person reading a sentence
+         * back is often the person who cannot read it, and the tiles they
+         * touched are the only form of it they can check. So an entry has to
+         * remember which tile it came from, not only what it will say.
+         */
+        val imagePath: String? = null,
+        val tint: String? = null,
     )
 
     private val entries = ArrayList<Entry>()
@@ -28,6 +38,14 @@ class MessageBar {
 
     /** What the bar shows. */
     fun displayed(): List<String> = entries.mapNotNull { it.display }
+
+    /**
+     * Takes back the last press — the bar's own undo control, which is the same
+     * act as `:backspace` reached from somewhere else.
+     */
+    fun removeLast() {
+        entries.removeLastOrNull()
+    }
 
     /** What `:speak` would say. */
     fun spokenText(): String = entries.mapNotNull { it.spoken }.joinToString(" ")
@@ -40,7 +58,13 @@ class MessageBar {
         when (button.onActivate) {
             // The default and the common case.
             OnActivate.Append -> {
-                entries += Entry(button.label, button.spokenText)
+                entries +=
+                    Entry(
+                        display = button.label,
+                        spoken = button.spokenText,
+                        imagePath = button.imagePath,
+                        tint = button.backgroundColor,
+                    )
                 null
             }
 

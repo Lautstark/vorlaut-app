@@ -8,9 +8,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -20,13 +21,21 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
+import de.lautstark.vorlaut.app.design.Vorlaut
+import de.lautstark.vorlaut.app.design.VorlautTheme
 import kotlinx.coroutines.launch
 
-/** Where the app is. Three places, and no library needed to say so. */
+/**
+ * Where the app is.
+ *
+ * [Board] is the front door whenever there is a Sammlung to open: this is a
+ * talker, and a child picking the tablet up should get a board rather than a
+ * file list. The other two are the adult's, reached on purpose.
+ */
 private sealed interface Route {
-    data object Packages : Route
-
     data object Board : Route
+
+    data object Sammlungen : Route
 
     data class Warnings(
         val packageId: String,
@@ -39,170 +48,94 @@ class MainActivity : ComponentActivity() {
         setContent {
             val model: ImportViewModel = viewModel()
             val state by model.state.collectAsState()
-
-            val picker =
-                androidx.activity.compose.rememberLauncherForActivityResult(
-                    // OpenDocument rather than GetContent: it gives a persistable,
-                    // re-readable URI and lets the caller filter by type. The file
-                    // is copied into app-private storage immediately either way.
-                    ActivityResultContracts.OpenDocument(),
-                ) { uri -> uri?.let(model::importFrom) }
-
-            // A package arriving by VIEW or SEND is handled once, on the intent
-            // that started or resumed the activity.
-            androidx.compose.runtime.LaunchedEffect(Unit) {
-                consumeIncoming(intent)?.let(model::importFrom)
-            }
-
             val boardModel: BoardViewModel = viewModel()
             val boardState by boardModel.state.collectAsState()
-            var route by remember { mutableStateOf<Route>(Route.Packages) }
 
             val handover = remember { Handover(applicationContext) }
-            // Two separate things. `handedOver` is this app's own guard and always
-            // works; `pinned` is Android's, which needs a system setting the app
-            // cannot turn on. Keeping them apart is what lets the screen be honest
-            // about which protections are actually in force.
             var handedOver by remember { mutableStateOf(handover.isHandedOver) }
             var pinned by remember { mutableStateOf(handover.isPinnedToScreen()) }
             var prompt by remember { mutableStateOf<PinPurpose?>(null) }
-
             var pinBusy by remember { mutableStateOf(false) }
             var pinWrong by remember { mutableStateOf(false) }
             val scope = rememberCoroutineScope()
 
-            prompt?.let { purpose ->
-                PinPrompt(
-                    purpose = purpose,
-                    busy = pinBusy,
-                    wrong = pinWrong,
-                    onDismiss = {
-                        prompt = null
-                        pinWrong = false
-                    },
-                    onSubmit = { entered ->
-                        pinWrong = false
-                        pinBusy = true
-                        scope.launch {
-                            when (purpose) {
-                                PinPurpose.Choose -> {
-                                    if (PinHash.isAcceptable(entered)) {
-                                        handover.setPin(entered)
-                                        handover.pinToScreen(this@MainActivity)
-                                        pinned = handover.isPinnedToScreen()
-                                        handedOver = true
-                                        handover.isHandedOver = true
-                                        prompt = null
-                                    } else {
-                                        pinWrong = true
-                                    }
-                                }
+            var route by remember { mutableStateOf<Route>(Route.Sammlungen) }
+            var opened by remember { mutableStateOf(false) }
 
-                                PinPurpose.Unlock -> {
-                                    if (handover.verify(entered)) {
-                                        handover.releaseScreen(this@MainActivity)
-                                        pinned = false
-                                        handedOver = false
-                                        handover.isHandedOver = false
-                                        prompt = null
-                                        boardModel.close()
-                                        route = Route.Packages
-                                    } else {
-                                        pinWrong = true
-                                    }
-                                }
-                            }
-                            pinBusy = false
-                        }
-                    },
-                )
+            val picker =
+                androidx.activity.compose.rememberLauncherForActivityResult(
+                    ActivityResultContracts.OpenDocument(),
+                ) { uri -> uri?.let(model::importFrom) }
+
+            LaunchedEffect(Unit) { consumeIncoming(intent)?.let(model::importFrom) }
+
+            /* The front door. With a Sammlung on the device the app opens on the
+               board it was last on — the list is where an adult goes on purpose,
+               not what a child is handed. Runs once, so that leaving the board
+               deliberately does not bounce straight back into it. */
+            LaunchedEffect(state.stored) {
+                if (opened || state.stored.isEmpty()) return@LaunchedEffect
+                val entry =
+                    state.stored.firstOrNull { it.boardPackage.id == handover.lastPackageId }
+                        ?: state.stored.first()
+                handover.lastPackageId = entry.boardPackage.id
+                boardModel.open(entry.boardPackage, entry.warnings, entry.archive)
+                route = Route.Board
+                opened = true
             }
 
-            // A restart while the tablet is handed over lands back on the board it
-            // was on. Coming back to the package list would put a child in front
-            // of the one screen that can reach other apps, at the moment nobody is
-            // watching — which is the situation this whole feature is for.
-            LaunchedEffect(state.stored, handedOver) {
-                if (handedOver && route == Route.Packages) {
-                    state.stored
-                        .firstOrNull { it.boardPackage.id == handover.lastPackageId }
-                        ?.let { entry ->
-                            boardModel.open(entry.boardPackage, entry.warnings, entry.archive)
-                            route = Route.Board
-                        }
-                }
+            fun leaveBoard() {
+                if (handedOver) prompt = PinPurpose.Unlock else route = Route.Sammlungen
             }
 
-            MaterialTheme {
-                Scaffold { padding ->
-                    val inset = Modifier.padding(padding)
+            VorlautTheme {
+                Box(Modifier.fillMaxSize().background(Vorlaut.colors.bg)) {
                     when (val here = route) {
-                        Route.Packages -> {
-                            ImportScreen(
-                                state = state,
-                                onPickFile = { picker.launch(IMPORTABLE_TYPES) },
-                                onOpen = { entry ->
-                                    handover.lastPackageId = entry.boardPackage.id
-                                    boardModel.open(
-                                        entry.boardPackage,
-                                        entry.warnings,
-                                        entry.archive,
-                                    )
-                                    route = Route.Board
-                                },
-                                onShowWarnings = { entry ->
-                                    route = Route.Warnings(entry.boardPackage.id)
-                                },
-                                modifier = inset,
-                            )
-                        }
-
                         Route.Board -> {
-                            // Back is one of the ordinary ways out, so while the app
-                            // is pinned it costs the same PIN the button does.
-                            // Unpinned, it behaves as it always did.
-                            BackHandler(enabled = handedOver) { prompt = PinPurpose.Unlock }
+                            // Back is one of the ordinary ways out, so while the
+                            // tablet is handed over it costs the same PIN the
+                            // long press does.
+                            BackHandler(enabled = true) { leaveBoard() }
                             TalkerScreen(
                                 state = boardState,
                                 media = boardModel.mediaLoader(),
                                 onPress = boardModel::press,
-                                onOpenWarnings = {
-                                    route = Route.Warnings(boardState.boardPackage?.id.orEmpty())
-                                },
-                                onClosePackage = {
-                                    // Pinned, the way out costs a PIN. Loose, it
-                                    // does not — a caregiver who has not handed the
-                                    // tablet over should not have to unlock their
-                                    // way back to a list they were just on.
-                                    if (handedOver) {
-                                        prompt = PinPurpose.Unlock
-                                    } else {
-                                        boardModel.close()
-                                        route = Route.Packages
-                                    }
-                                },
+                                onSpeak = boardModel::speakBar,
+                                onUndo = boardModel::undo,
+                                onClear = boardModel::clearBar,
+                                onLeave = ::leaveBoard,
                                 handedOver = handedOver,
-                                pinningUnavailable = !pinned,
+                            )
+                        }
+
+                        Route.Sammlungen -> {
+                            SammlungenScreen(
+                                state = state,
+                                onAdd = { picker.launch(IMPORTABLE_TYPES) },
+                                onOpen = { entry ->
+                                    handover.lastPackageId = entry.boardPackage.id
+                                    boardModel.open(entry.boardPackage, entry.warnings, entry.archive)
+                                    route = Route.Board
+                                },
+                                onWarnings = { route = Route.Warnings(it.boardPackage.id) },
                                 onHandOver = {
                                     if (handover.isPinSet) {
                                         handover.pinToScreen(this@MainActivity)
                                         pinned = handover.isPinnedToScreen()
                                         handedOver = true
                                         handover.isHandedOver = true
+                                        route = Route.Board
                                     } else {
                                         prompt = PinPurpose.Choose
                                     }
                                 },
+                                handedOver = handedOver,
+                                pinningUnavailable = !pinned,
                                 onFixPinning = {
-                                    // No public intent opens App pinning directly;
-                                    // security settings is the nearest door.
                                     runCatching {
-                                        startActivity(
-                                            Intent(android.provider.Settings.ACTION_SECURITY_SETTINGS),
-                                        )
+                                        startActivity(Intent(android.provider.Settings.ACTION_SECURITY_SETTINGS))
                                     }
                                 },
-                                modifier = inset,
                             )
                         }
 
@@ -211,13 +144,56 @@ class MainActivity : ComponentActivity() {
                             WarningsScreen(
                                 packageName = entry?.boardPackage?.name.orEmpty(),
                                 warnings = entry?.warnings.orEmpty(),
-                                onBack = {
-                                    route =
-                                        if (boardState.boardPackage == null) Route.Packages else Route.Board
-                                },
-                                modifier = inset,
+                                onBack = { route = Route.Sammlungen },
                             )
                         }
+                    }
+
+                    prompt?.let { purpose ->
+                        PinPrompt(
+                            purpose = purpose,
+                            busy = pinBusy,
+                            wrong = pinWrong,
+                            onDismiss = {
+                                prompt = null
+                                pinWrong = false
+                            },
+                            onSubmit = { entered ->
+                                pinWrong = false
+                                pinBusy = true
+                                scope.launch {
+                                    when (purpose) {
+                                        PinPurpose.Choose -> {
+                                            if (PinHash.isAcceptable(entered)) {
+                                                handover.setPin(entered)
+                                                handover.pinToScreen(this@MainActivity)
+                                                pinned = handover.isPinnedToScreen()
+                                                handedOver = true
+                                                handover.isHandedOver = true
+                                                prompt = null
+                                                route = Route.Board
+                                            } else {
+                                                pinWrong = true
+                                            }
+                                        }
+
+                                        PinPurpose.Unlock -> {
+                                            if (handover.verify(entered)) {
+                                                handover.releaseScreen(this@MainActivity)
+                                                pinned = false
+                                                handedOver = false
+                                                handover.isHandedOver = false
+                                                prompt = null
+                                                route = Route.Sammlungen
+                                            } else {
+                                                pinWrong = true
+                                            }
+                                        }
+                                    }
+                                    pinBusy = false
+                                }
+                            },
+                        )
                     }
                 }
             }
@@ -237,7 +213,6 @@ class MainActivity : ComponentActivity() {
                 Intent.ACTION_SEND -> intent.extraStream()
                 else -> null
             } ?: return null
-        // Cleared so a configuration change does not re-import the same file.
         intent.action = null
         intent.data = null
         return uri
@@ -253,12 +228,10 @@ class MainActivity : ComponentActivity() {
 
     private companion object {
         /**
-         * `.obz` has no registered media type. SPEC.md 2 gives it `application/zip`,
-         * but content providers routinely report an unknown extension as
-         * `application/octet-stream`, so both are offered — a picker that cannot
-         * see the file is not a picker. Anything that is not a board package is
-         * refused by the importer with a reason, which is a better place to find
-         * out than a filter that silently hides the file the user meant.
+         * `.obz` has no registered media type. SPEC.md 2 gives it
+         * `application/zip`, but providers routinely report an unknown
+         * extension as `application/octet-stream`, so both are offered — a
+         * picker that cannot see the file is not a picker.
          */
         val IMPORTABLE_TYPES =
             arrayOf("application/zip", "application/octet-stream", "application/x-zip-compressed")
