@@ -9,10 +9,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -51,6 +53,14 @@ import de.lautstark.vorlaut.boardpackage.OnActivate
  * One gap governs every gutter: the outer edges, between any two cells, and
  * between the sentence bar and the grid. The build this replaces set a padding
  * on the grid *and* inside each cell, so the outer columns carried both.
+ *
+ * The one place that gutter widens is after the first column, and only where the
+ * package asked for it (SPEC.md 4.1). It is still the same number — a spacer one
+ * gap wide, between two gaps, so the seam is three gaps and every other seam is
+ * one. What it says is that those buttons stay reachable while the pages behind
+ * them change; nothing here makes them stay, and nothing in the format does. The
+ * builder wrote that column onto every board, and this is the gap that tells a
+ * reader so.
  */
 @Composable
 fun BoardScreen(
@@ -61,6 +71,8 @@ fun BoardScreen(
     modifier: Modifier = Modifier,
 ) {
     val gap = Vorlaut.metrics.gap
+    // Only where there is a second column for the space to be between.
+    val apart = state.firstColumnGap && board.columns > 1
     val byId = board.buttons.associateBy { it.id }
     // The ground stays neutral. ext_lautstark_board_color is the builder's set
     // colour and it is not a word class — painting the whole screen with it
@@ -68,13 +80,17 @@ fun BoardScreen(
     // meaning, and drowns the Fitzgerald tints that do. On a sparse board it
     // is most of the screen. The approved mock does not use it at all.
     BoxWithConstraints(modifier.fillMaxSize().background(Vorlaut.colors.bg)) {
-        val cell = minOf(maxWidth / board.columns.coerceAtLeast(1), maxHeight / board.rows.coerceAtLeast(1))
+        // The seam takes two gaps' worth of width off the row, so the cell size
+        // the images and the type scale off has to know about it.
+        val across = maxWidth - if (apart) gap * 2 else 0.dp
+        val cell = minOf(across / board.columns.coerceAtLeast(1), maxHeight / board.rows.coerceAtLeast(1))
         val targetPx = with(LocalDensity.current) { cell.toPx().toInt() }
 
         Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(gap)) {
             board.cells.forEach { row ->
                 Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(gap)) {
-                    row.forEach { cellId ->
+                    row.forEachIndexed { column, cellId ->
+                        if (apart && column == 1) Spacer(Modifier.width(gap))
                         Box(Modifier.weight(1f).fillMaxSize()) {
                             // A cell is empty three ways — the grid holds null,
                             // the id names no button, or the button is hidden —

@@ -35,7 +35,7 @@ class ConformanceTest {
         // The index is the machine-readable list and step 1 of the contract, so it
         // decides how many there are. Pinned as a tripwire: fixtures appearing or
         // vanishing under a pin is exactly the change that must not pass quietly.
-        assertEquals("fixture count changed under the pin", 13, index.size)
+        assertEquals("fixture count changed under the pin", 14, index.size)
         val unknownBlocks = blocked.keys - index.map { it.name }.toSet()
         assertTrue(
             "blocked fixtures that no longer exist: $unknownBlocks",
@@ -119,6 +119,7 @@ class ConformanceTest {
             mismatches.expectBoolean(wanted, "redistributable", pkg.redistributable, "package")
             mismatches.expectString(wanted, "tts_voice", pkg.ttsVoice, "package")
             mismatches.expectString(wanted, "root_board", pkg.rootBoardId, "package")
+            mismatches.expectBoolean(wanted, "first_column_gap", pkg.firstColumnGap, "package")
         }
 
         // Order within boards and buttons is not significant.

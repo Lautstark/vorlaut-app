@@ -20,12 +20,18 @@ deliberate change with a test run attached, never a routine bump.
 ## Current state
 
 ```properties
-exchange.sha=5ffeb579bccefc71e7b63f2e19008440df0c3179
+exchange.sha=98209c1815891cf61e86a8e1833403c7de3761dd
 ```
 
-That commit carries `SPEC.md` 1.0.0 and thirteen fixtures, all of which pass.
+That commit carries `SPEC.md` 1.1.0 and fourteen fixtures, all of which pass.
 
-No `exchange-v1.0.0` tag is cut and none will be until a real board round-trips
+Moved from `5ffeb57` (1.0.0, thirteen fixtures) for
+`ext_lautstark_first_column_gap` — SPEC.md §4.1's layout hint and the
+`first-column-gap` fixture that comes with it. A minor bump, so the importer at
+the old pin would have kept passing; what it would not have done is read the
+field, and the fixture asserting the default is the one that says so.
+
+No `exchange-v1.1.0` tag is cut and none will be until a real board round-trips
 to a tablet, so a commit SHA is the pin. The spec is still a draft and the
 fixtures will move; each move is a deliberate change with a test run attached.
 

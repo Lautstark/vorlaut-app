@@ -36,6 +36,9 @@ class SpecRulesTest {
         format: String = "open-board-0.1",
         symbolSource: String = "arasaac",
         redistributable: Boolean = true,
+        // Raw JSON rather than a Boolean, so a test can write a value the field
+        // is not allowed to have and watch it be ignored rather than rejected.
+        firstColumnGap: String? = null,
     ) = """
         {
           "format": "$format",
@@ -46,7 +49,9 @@ class SpecRulesTest {
           "ext_lautstark_package_name": "Test",
           "ext_lautstark_modified": "2026-08-24T09:00:00Z",
           "ext_lautstark_symbol_source": "$symbolSource",
-          "ext_lautstark_redistributable": $redistributable
+          "ext_lautstark_redistributable": $redistributable${
+        firstColumnGap?.let { ",\n          \"ext_lautstark_first_column_gap\": $it" }.orEmpty()
+    }
         }
         """.trimIndent()
 
@@ -147,6 +152,42 @@ class SpecRulesTest {
                 archive("manifest.json" to manifest(specVersion = "1.9.0"), "boards/b.obf" to board()),
             )
         assertTrue("a higher minor version must still import", forward is ImportResult.Accepted)
+    }
+
+    @Test
+    fun `the first column gap is false unless a package asks for it`() {
+        // SPEC.md 4.1's default, and the reason it matters: every package written
+        // against 1.0.0 omits the field, and reading a missing hint as anything
+        // but false separates a column nobody asked to separate.
+        val silent =
+            BoardPackageImporter.import(
+                archive("manifest.json" to manifest(), "boards/b.obf" to board()),
+            ) as ImportResult.Accepted
+        assertEquals(false, silent.boardPackage.firstColumnGap)
+
+        val asking =
+            BoardPackageImporter.import(
+                archive("manifest.json" to manifest(firstColumnGap = "true"), "boards/b.obf" to board()),
+            ) as ImportResult.Accepted
+        assertEquals(true, asking.boardPackage.firstColumnGap)
+    }
+
+    @Test
+    fun `a first column gap that is not a boolean is ignored, not refused`() {
+        // The hint is a hint. SPEC.md 4.1 says a value that is not a boolean is
+        // treated as absent and that an importer MUST NOT fail over it — a
+        // vocabulary somebody depends on is not withheld over a gutter.
+        val result =
+            BoardPackageImporter.import(
+                archive("manifest.json" to manifest(firstColumnGap = "\"yes\""), "boards/b.obf" to board()),
+            )
+        assertTrue("a malformed hint must not reject the package", result is ImportResult.Accepted)
+        val accepted = result as ImportResult.Accepted
+        assertEquals(false, accepted.boardPackage.firstColumnGap)
+        // And it is not a warning either: SPEC.md 9.3 keeps that list for defects
+        // a caregiver can act on, and a package that renders correctly without the
+        // gap has nothing for them to do.
+        assertEquals(emptyList<ImportWarning>(), accepted.warnings)
     }
 
     @Test

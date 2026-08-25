@@ -208,6 +208,10 @@ object BoardPackageImporter {
                     symbolSource = symbolSource,
                     redistributable = redistributable,
                     ttsVoice = manifest.str("ext_lautstark_tts_voice"),
+                    // SPEC.md 4.1: optional, false by default, and a hint an
+                    // importer must never fail over — so a value that is not a
+                    // boolean is treated as absent rather than rejected.
+                    firstColumnGap = manifest.bool("ext_lautstark_first_column_gap") ?: false,
                     specVersion = specVersion,
                     rootBoardId = rootBoardId,
                     boards = boards,
