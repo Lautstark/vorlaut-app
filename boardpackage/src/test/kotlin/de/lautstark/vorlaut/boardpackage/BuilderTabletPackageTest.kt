@@ -158,7 +158,13 @@ class BuilderTabletPackageTest {
         // different job: word classes colour a word, this colours a place.
         assertEquals("#3B5BDB", board("board-1").color)
         assertEquals("#159947", board("board-2").color)
-        assertTrue("board colours are not distinct", pkg.boards.map { it.color }.toSet().size == 2)
+        assertTrue(
+            "board colours are not distinct",
+            pkg.boards
+                .map { it.color }
+                .toSet()
+                .size == 2,
+        )
     }
 
     @Test
@@ -183,8 +189,10 @@ class BuilderTabletPackageTest {
         // stand-in synthesiser answers two of these sentences identically, and
         // content-addressed naming quite correctly writes one file for them.
         // Asserted because it is the behaviour rather than an accident.
-        val paths = pkg.boards.flatMap { it.buttons }
-            .mapNotNull { (it.audio as? AudioSource.Recorded)?.path }
+        val paths =
+            pkg.boards
+                .flatMap { it.buttons }
+                .mapNotNull { (it.audio as? AudioSource.Recorded)?.path }
         assertTrue("no clips at all", paths.isNotEmpty())
         assertTrue("clips were not de-duplicated", paths.toSet().size < paths.size)
     }

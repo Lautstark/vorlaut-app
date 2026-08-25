@@ -1,5 +1,6 @@
 package de.lautstark.vorlaut.app
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -13,28 +14,25 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import de.lautstark.vorlaut.app.design.Txt
+import de.lautstark.vorlaut.app.design.Vorlaut
 import de.lautstark.vorlaut.boardpackage.Board
 import de.lautstark.vorlaut.boardpackage.Button
 import de.lautstark.vorlaut.boardpackage.ButtonState
@@ -43,12 +41,16 @@ import de.lautstark.vorlaut.boardpackage.OnActivate
 /**
  * A board, drawn.
  *
- * The grid is built from nested weights rather than a lazy grid with a fixed cell
- * size, and that is the whole reason it has no maximum: every row takes an equal
- * share of the height and every cell an equal share of its row, so a 6x11 board
- * divides the same space as a 3x5 one and simply gets smaller cells. Nothing
- * scrolls — a board is a page a user learns the shape of, and a button that moves
- * off-screen is a button somebody navigating by position cannot find.
+ * The grid is nested weights rather than a lazy grid with a fixed cell size,
+ * and that is why it has no maximum: every row takes an equal share of the
+ * height and every cell an equal share of its row, so a 6x11 board divides the
+ * same space as a 3x5 and simply gets smaller cells. Nothing scrolls — a board
+ * is a page whose shape a user learns, and a button that moves off-screen is a
+ * button somebody navigating by position cannot find.
+ *
+ * One gap governs every gutter: the outer edges, between any two cells, and
+ * between the sentence bar and the grid. The build this replaces set a padding
+ * on the grid *and* inside each cell, so the outer columns carried both.
  */
 @Composable
 fun BoardScreen(
@@ -58,34 +60,28 @@ fun BoardScreen(
     onPress: (Button) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val gap = Vorlaut.metrics.gap
     val byId = board.buttons.associateBy { it.id }
-    val background = board.color?.let { parseHex(it) } ?: MaterialTheme.colorScheme.surface
-
-    BoxWithConstraints(modifier = modifier.fillMaxSize().background(background)) {
-        val cellWidth = maxWidth / board.columns.coerceAtLeast(1)
-        val cellHeight = maxHeight / board.rows.coerceAtLeast(1)
-        val cell = minOf(cellWidth, cellHeight)
+    // The ground stays neutral. ext_lautstark_board_color is the builder's set
+    // colour and it is not a word class — painting the whole screen with it
+    // makes the loudest thing on the board the one thing that carries no
+    // meaning, and drowns the Fitzgerald tints that do. On a sparse board it
+    // is most of the screen. The approved mock does not use it at all.
+    BoxWithConstraints(modifier.fillMaxSize().background(Vorlaut.colors.bg)) {
+        val cell = minOf(maxWidth / board.columns.coerceAtLeast(1), maxHeight / board.rows.coerceAtLeast(1))
         val targetPx = with(LocalDensity.current) { cell.toPx().toInt() }
 
-        Column(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(gap)) {
             board.cells.forEach { row ->
-                Row(Modifier.fillMaxWidth().weight(1f)) {
+                Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(gap)) {
                     row.forEach { cellId ->
                         Box(Modifier.weight(1f).fillMaxSize()) {
-                            // A cell may be empty three ways: the grid holds null,
-                            // the id names no button, or the button is hidden. All
-                            // three draw as an empty cell rather than as a gap that
-                            // shifts everything after it.
-                            val button = cellId?.let { byId[it] }
-                            if (button != null) {
-                                ButtonCell(
-                                    button = button,
-                                    state = state,
-                                    media = media,
-                                    size = cell,
-                                    targetPx = targetPx,
-                                    onPress = onPress,
-                                )
+                            // A cell is empty three ways — the grid holds null,
+                            // the id names no button, or the button is hidden —
+                            // and all three keep their place rather than
+                            // shifting everything after them.
+                            byId[cellId]?.let {
+                                ButtonCell(it, state, media, cell, targetPx, onPress)
                             }
                         }
                     }
@@ -100,139 +96,114 @@ private fun ButtonCell(
     button: Button,
     state: BoardUiState,
     media: BoardMedia,
-    size: Dp,
+    cell: Dp,
     targetPx: Int,
     onPress: (Button) -> Unit,
 ) {
+    val c = Vorlaut.colors
     val disabled = button.onActivate == OnActivate.Disabled
     val degraded = button.state == ButtonState.DEGRADED
-    val synthesising = state.isSynthesising(button)
-    val playingClip = state.isPlayingClip(button)
+    val speaking = state.isSynthesising(button) || state.isPlayingClip(button)
 
-    val face = button.backgroundColor?.let { parseHex(it) } ?: MaterialTheme.colorScheme.surfaceVariant
-    val edge =
-        when {
-            // The speaking marks are the loudest thing on the button while they
-            // last, because they answer "did it hear me" — the question a user
-            // asks first and cannot ask out loud.
-            playingClip -> MaterialTheme.colorScheme.primary
-
-            synthesising -> MaterialTheme.colorScheme.tertiary
-
-            button.borderColor?.let { parseHex(it) } != null -> parseHex(button.borderColor!!)!!
-
-            else -> MaterialTheme.colorScheme.outlineVariant
-        }
-
-    val padding = (size * PADDING_FRACTION).coerceAtMost(MAX_PADDING)
+    // The tint is the word class, written into background_color by the builder.
+    // It is the only colour on this screen that carries meaning, which is why
+    // a resting cell has nothing else on it — no border, no shadow, no gradient.
+    val tint = parseHex(button.backgroundColor) ?: c.surface2
     val image = media.image(button.imagePath, targetPx)
+    val radius = RoundedCornerShape(Vorlaut.metrics.radius)
 
     Box(
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .clip(RoundedCornerShape(CORNER))
-                .background(face)
-                .then(
-                    if (playingClip || synthesising) {
-                        Modifier.border(SPEAKING_EDGE, edge, RoundedCornerShape(CORNER))
-                    } else {
-                        Modifier.border(RESTING_EDGE, edge, RoundedCornerShape(CORNER))
-                    },
-                )
-                // A disabled button is not `enabled = false` on a clickable: it must
-                // still take the press and visibly refuse it, rather than behaving like
-                // a gap in the board.
-                .clickable { onPress(button) }
-                .semantics {
-                    contentDescription = describe(button, degraded, disabled)
+        Modifier
+            .fillMaxSize()
+            .clip(radius)
+            .background(tint)
+            .then(
+                // The speaking mark is the loudest thing on the button while it
+                // lasts, because it answers "did it hear me" — the question a
+                // user asks first and cannot ask out loud. Clip and device
+                // voice are told apart by hue.
+                when {
+                    state.isPlayingClip(button) -> Modifier.border(4.dp, c.accent, radius)
+                    state.isSynthesising(button) -> Modifier.border(4.dp, c.accentStrong, radius)
+                    else -> Modifier
                 },
-        contentAlignment = Alignment.Center,
+            )
+            // A disabled button still takes the press and visibly refuses it,
+            // rather than behaving like a gap in the board.
+            .clickable { onPress(button) }
+            .semantics { contentDescription = describe(button, degraded, disabled) }
+            .padding(8.dp),
     ) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(padding).alpha(if (disabled) DISABLED_ALPHA else 1f),
+            Modifier.fillMaxSize().alpha(if (disabled) 0.45f else 1f),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             if (image != null) {
-                androidx.compose.foundation.Image(
+                Image(
                     bitmap = image,
                     contentDescription = null,
                     contentScale = ContentScale.Fit,
-                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(Vorlaut.metrics.radiusSm))
+                            // A pictogram is a canvas, not a plane: AAC symbols are
+                            // drawn for white and need it in either scheme.
+                            .background(Color.White),
                 )
+            } else {
+                Box(Modifier.weight(1f))
             }
-            button.label?.let { label ->
-                Text(
-                    text = label,
-                    textAlign = TextAlign.Center,
-                    maxLines = if (image == null) LABEL_LINES_ALONE else 1,
-                    overflow = TextOverflow.Ellipsis,
-                    // Type scales with the cell, so a dense board stays legible
-                    // instead of clipping every label to an ellipsis.
-                    fontSize = labelSize(size, hasImage = image != null),
-                    lineHeight = labelSize(size, hasImage = image != null) * LINE_HEIGHT,
-                    color = MaterialTheme.colorScheme.onSurface,
+            button.label?.let {
+                Txt(
+                    it,
+                    style =
+                        Vorlaut.type.body.copy(
+                            fontSize = labelSize(cell, image != null),
+                            fontWeight = FontWeight.SemiBold,
+                            letterSpacing = (-0.01).sp,
+                        ),
+                    // Ink on a word-class tint is always the dark ink: the
+                    // tints are pale by definition and do not change with the
+                    // scheme, so neither may the text on them.
+                    color = Color(0xFF1A1A1D),
+                    maxLines = if (image == null) 3 else 1,
+                    align = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
         }
 
-        // SPEC.md 9.2: the marking MUST be visible in the UI, not merely logged.
-        // A caregiver needs to see at a glance which buttons are incomplete, and
-        // the person importing is rarely the person who later notices.
-        if (degraded) DegradedMark(Modifier.align(Alignment.TopEnd).padding(padding))
-        if (disabled) DisabledMark(Modifier.align(Alignment.Center))
-    }
-}
-
-/**
- * A corner wedge for a button that lost something it was promised.
- *
- * Deliberately not a placeholder picture: SPEC.md 9.2 leaves the label, colour
- * and action standing on a degraded button, and drawing a stand-in symbol would
- * tell a user who cannot read that the button has a picture, which it does not.
- */
-@Composable
-private fun DegradedMark(modifier: Modifier = Modifier) {
-    Box(
-        modifier
-            .size(MARK)
-            .clip(RoundedCornerShape(MARK / 2))
-            .background(MaterialTheme.colorScheme.error),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text("!", color = MaterialTheme.colorScheme.onError, fontSize = MARK_TEXT)
+        // SPEC.md 9.2: the marking MUST be visible in the UI, not merely
+        // logged. Deliberately not a stand-in pictogram — drawing one would
+        // tell a child who cannot read that the button has a picture, which is
+        // the thing that has gone missing.
+        if (degraded) {
+            Box(
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .size(22.dp)
+                    .clip(RoundedCornerShape(11.dp))
+                    .background(c.danger),
+                contentAlignment = Alignment.Center,
+            ) { Txt("!", style = Vorlaut.type.small, color = c.dangerInk) }
+        }
+        if (disabled) DisabledCross(Modifier.fillMaxSize())
+        if (speaking) Unit
     }
 }
 
 /** A cross over the whole face: this button is not going to do anything. */
 @Composable
-private fun DisabledMark(modifier: Modifier = Modifier) {
-    val colour = MaterialTheme.colorScheme.outline
+private fun DisabledCross(modifier: Modifier) {
+    val colour = Vorlaut.colors.textDim
     Box(
-        modifier.fillMaxSize().drawBehind {
-            val inset = size.minDimension * CROSS_INSET
-            drawLine(
-                color = colour,
-                start =
-                    androidx.compose.ui.geometry
-                        .Offset(inset, inset),
-                end =
-                    androidx.compose.ui.geometry
-                        .Offset(size.width - inset, size.height - inset),
-                strokeWidth = CROSS_STROKE,
-            )
-            drawLine(
-                color = colour,
-                start =
-                    androidx.compose.ui.geometry
-                        .Offset(size.width - inset, inset),
-                end =
-                    androidx.compose.ui.geometry
-                        .Offset(inset, size.height - inset),
-                strokeWidth = CROSS_STROKE,
-            )
+        modifier.drawBehind {
+            val inset = size.minDimension * 0.28f
+            drawLine(colour, Offset(inset, inset), Offset(size.width - inset, size.height - inset), 3f)
+            drawLine(colour, Offset(size.width - inset, inset), Offset(inset, size.height - inset), 3f)
         },
     )
 }
@@ -241,41 +212,25 @@ private fun describe(
     button: Button,
     degraded: Boolean,
     disabled: Boolean,
-): String =
-    buildString {
-        append(button.label ?: button.id)
-        if (disabled) append(", unavailable")
-        if (degraded) append(", incomplete")
-    }
+) = buildString {
+    append(button.label ?: button.id)
+    // Left in German with the rest of the default locale; these reach a screen
+    // reader rather than the screen, and follow the same resources when the
+    // English half is wired through.
+    if (disabled) append(", nicht verfügbar")
+    if (degraded) append(", unvollständig")
+}
+
+/** Type scales with the cell, so a dense board stays legible instead of clipping. */
+private fun labelSize(
+    cell: Dp,
+    hasImage: Boolean,
+) = (cell.value * if (hasImage) 0.11f else 0.17f).coerceIn(9f, 26f).sp
 
 /** `#RRGGBB` only — the importer already normalised `rgb(...)` and dropped the rest. */
-private fun parseHex(value: String?): Color? {
+internal fun parseHex(value: String?): Color? {
     val text = value ?: return null
     if (!text.startsWith("#") || text.length != 7) return null
     val rgb = text.substring(1).toLongOrNull(16) ?: return null
     return Color(0xFF000000L or rgb)
 }
-
-private fun labelSize(
-    cell: Dp,
-    hasImage: Boolean,
-) = (cell.value * if (hasImage) LABEL_WITH_IMAGE else LABEL_ALONE)
-    .coerceIn(MIN_LABEL, MAX_LABEL)
-    .sp
-
-private const val PADDING_FRACTION = 0.04f
-private val MAX_PADDING = 8.dp
-private val CORNER = 10.dp
-private val RESTING_EDGE = 1.dp
-private val SPEAKING_EDGE = 4.dp
-private val MARK = 18.dp
-private val MARK_TEXT = 13.sp
-private const val DISABLED_ALPHA = 0.45f
-private const val CROSS_INSET = 0.28f
-private const val CROSS_STROKE = 3f
-private const val LABEL_WITH_IMAGE = 0.11f
-private const val LABEL_ALONE = 0.17f
-private const val MIN_LABEL = 9f
-private const val MAX_LABEL = 26f
-private const val LINE_HEIGHT = 1.15f
-private const val LABEL_LINES_ALONE = 3

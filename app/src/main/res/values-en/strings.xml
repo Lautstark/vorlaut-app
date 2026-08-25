@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="import_board_package">Open a collection</string>
+
+    <string name="add_collection">Add a collection</string>
+    <string name="settings">Settings</string>
+    <string name="back">Back</string>
+    <string name="hand_over">Hand over</string>
+
+    <string name="empty_headline">No collection on this device yet.</string>
+    <string name="empty_body">A collection arrives as an .obz file from the editor. Open it from your files, share it to this app, or fetch it below.</string>
+    <string name="empty_footnote">Without a collection this device has nothing to say.</string>
+
+    <string name="not_redistributable">not for passing on</string>
+    <plurals name="boards">
+        <item quantity="one">%d board</item>
+        <item quantity="other">%d boards</item>
+    </plurals>
+    <plurals name="buttons">
+        <item quantity="one">%d button</item>
+        <item quantity="other">%d buttons</item>
+    </plurals>
+    <plurals name="warnings_count">
+        <item quantity="one">%d warning</item>
+        <item quantity="other">%d warnings</item>
+    </plurals>
+    <string name="added">“%1$s” added.</string>
+    <string name="replaced">“%1$s” replaced.</string>
+    <string name="not_newer">“%1$s” is not newer than the stored copy and was not taken.</string>
+    <string name="refused">%1$s: %2$s</string>
+    <string name="nothing_missing_body">Every button has what it promised.</string>
+    <string name="warnings_intro">This collection works. Only whoever built it can change this — the order below is the order it appears on the board.</string>
+    <string name="no_warnings">Nothing is missing from this collection.</string>
+
+    <string name="speak">Speak</string>
+    <string name="undo">Undo</string>
+    <string name="clear">Clear</string>
+    <string name="leave_board">Press and hold to leave the board</string>
+
+    <string name="pin_choose_title">Choose a PIN</string>
+    <string name="pin_choose_body">At least four digits. It is what gets you back out of the board once the tablet is handed over, so pick something you will not have to think about.</string>
+    <string name="pin_enter_title">Enter the PIN</string>
+    <string name="pin_enter_body">This leaves the board and releases the tablet.</string>
+    <string name="pin_set">Set PIN</string>
+    <string name="pin_unlock">Unlock</string>
+    <string name="pin_wrong">That is not the PIN.</string>
+    <string name="cancel">Cancel</string>
+
+    <string name="pinning_off">The PIN is set, but Android\'s app pinning is switched off — Home and Overview still leave this board.</string>
+    <string name="open_security_settings">Open Android\'s security settings</string>
+    <string name="w_image_missing">A picture is missing. The button shows its label only.</string>
+    <string name="w_image_oversized">A picture is too large to show, so the button has none.</string>
+    <string name="w_image_undecodable">A picture could not be read, so the button has none.</string>
+    <string name="w_sound_missing">A recording is missing. The button speaks in the device voice.</string>
+    <string name="w_sound_undecodable">A recording could not be read. The button speaks in the device voice.</string>
+    <string name="w_sound_too_long">A recording is longer than 30 seconds. The button speaks in the device voice.</string>
+    <string name="w_action_unsupported">This button asks for something this viewer cannot do, so it is switched off.</string>
+    <string name="w_button_missing">The board has a gap where a button was meant to be.</string>
+    <string name="w_path_normalization">A file inside the collection is named unusually. It was found anyway.</string>
+    <string name="w_path_conflict">The collection disagrees with itself about where a file lives.</string>
+    <string name="w_image_reference_ignored">A picture also pointed somewhere online. The one in the collection was used.</string>
+    <string name="w_color_unparseable">A colour could not be read, so the standard one was used.</string>
+</resources>

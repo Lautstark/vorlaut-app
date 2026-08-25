@@ -145,7 +145,7 @@ class BoardViewModel(
         // scenario has w3 — label "Apfel", vocalization "einen Apfel" — putting
         // `einen Apfel` in the bar. SPEC.md 13 makes the fixture normative where
         // the two disagree, so the fixture wins and the sentence is the bug.
-        _state.value = _state.value.copy(entries = entries.map { it.spoken ?: it.display ?: "" })
+        _state.value = _state.value.copy(entries = entries)
     }
 
     /**
@@ -166,7 +166,28 @@ class BoardViewModel(
         button.spokenText?.let { speech.speak(button.id, it) }
     }
 
+    /**
+     * The bar's own controls (SPEC.md 7.4's behaviours, reached from the bar
+     * rather than from a button in the grid).
+     *
+     * A package may still carry `:speak` or `:clear` buttons and those keep
+     * working; these are the same behaviours put where they belong, so that a
+     * fifteen-cell board does not have to spend three of its cells on
+     * punctuation.
+     */
+    fun speakBar() {
+        val text = bar.spokenText()
+        if (text.isNotEmpty()) speech.speak(buttonId = null, text = text)
+    }
+
+    fun undo() {
+        speech.stop()
+        bar.removeLast()
+        _state.value = _state.value.copy(entries = bar.contents())
+    }
+
     fun clearBar() {
+        speech.stop()
         bar = MessageBar()
         _state.value = _state.value.copy(entries = emptyList())
     }
@@ -181,7 +202,7 @@ data class BoardUiState(
     val boardPackage: BoardPackage? = null,
     val warnings: List<ImportWarning> = emptyList(),
     val currentBoardId: String? = null,
-    val entries: List<String> = emptyList(),
+    val entries: List<MessageBar.Entry> = emptyList(),
     val speaking: Speech.Speaking = Speech.Speaking.Silent,
 ) {
     val board: Board?
