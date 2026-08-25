@@ -110,6 +110,15 @@ data class VorlautMetrics(
     val radiusSm: Dp = 9.dp,
     val radiusItem: Dp = 7.dp,
     val gap: Dp = 10.dp,
+    /**
+     * How far every screen holds off the edge of the display.
+     *
+     * One number for all four screens. It was 28dp on the three list screens
+     * and 16dp on the board, which is the kind of difference nobody sees on one
+     * screen at a time and everybody feels moving between them — the board
+     * looked like a different application's board.
+     */
+    val screenMargin: Dp = 28.dp,
 )
 
 /**

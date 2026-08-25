@@ -68,11 +68,10 @@ fun WarningsScreen(
             Modifier.weight(1f).fillMaxWidth(),
             contentPadding =
                 androidx.compose.foundation.layout
-                    .PaddingValues(horizontal = 28.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
+                    .PaddingValues(horizontal = Vorlaut.metrics.screenMargin),
         ) {
             item {
-                Column(Modifier.widthIn(max = 860.dp)) {
+                Column(Modifier.fillMaxWidth()) {
                     if (warnings.isEmpty()) {
                         EmptyState(
                             headline = stringResource(R.string.no_warnings),
@@ -85,11 +84,11 @@ fun WarningsScreen(
                 }
             }
             items(warnings) { warning ->
-                Box(Modifier.widthIn(max = 860.dp)) { WarningRow(warning) }
+                Box(Modifier.fillMaxWidth()) { WarningRow(warning) }
             }
             item {
                 Row(
-                    Modifier.widthIn(max = 860.dp).fillMaxWidth().padding(top = 10.dp, bottom = 24.dp),
+                    Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 24.dp),
                     horizontalArrangement = Arrangement.End,
                 ) { Btn(stringResource(R.string.back), onBack, tier = BtnTier.Normal) }
             }

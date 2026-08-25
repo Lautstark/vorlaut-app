@@ -61,7 +61,7 @@ fun SettingsScreen(
                 .weight(1f)
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 28.dp),
+                .padding(horizontal = Vorlaut.metrics.screenMargin),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Column(Modifier.widthIn(max = 860.dp).fillMaxWidth()) {
@@ -105,7 +105,7 @@ fun SettingsScreen(
         }
 
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 20.dp),
+            Modifier.fillMaxWidth().padding(horizontal = Vorlaut.metrics.screenMargin, vertical = 20.dp),
             horizontalArrangement = Arrangement.End,
         ) { Btn(stringResource(R.string.back), onBack, tier = BtnTier.Normal) }
     }

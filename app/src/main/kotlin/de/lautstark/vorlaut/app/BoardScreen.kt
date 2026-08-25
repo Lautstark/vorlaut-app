@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -124,7 +125,8 @@ private fun ButtonCell(
     // The tint is the word class, written into background_color by the builder.
     // It is the only colour on this screen that carries meaning, which is why
     // a resting cell has nothing else on it — no border, no shadow, no gradient.
-    val tint = parseHex(button.backgroundColor) ?: c.surface2
+    val given = parseHex(button.backgroundColor)
+    val tint = given ?: c.surface2
     val image = media.image(button.imagePath, targetPx)
     val radius = RoundedCornerShape(Vorlaut.metrics.radius)
 
@@ -181,10 +183,7 @@ private fun ButtonCell(
                             fontWeight = FontWeight.SemiBold,
                             letterSpacing = (-0.01).sp,
                         ),
-                    // Ink on a word-class tint is always the dark ink: the
-                    // tints are pale by definition and do not change with the
-                    // scheme, so neither may the text on them.
-                    color = Color(0xFF1A1A1D),
+                    color = inkOn(given),
                     maxLines = if (image == null) 3 else 1,
                     align = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth(),
@@ -242,6 +241,21 @@ private fun labelSize(
     cell: Dp,
     hasImage: Boolean,
 ) = (cell.value * if (hasImage) 0.11f else 0.17f).coerceIn(9f, 26f).sp
+
+/**
+ * The ink that goes on a cell of [tint], where null means the package gave the
+ * button no colour of its own.
+ *
+ * A tint that came from the package is a Fitzgerald key colour: pale by
+ * definition and the same in either scheme, so the text on it is always the
+ * dark ink and must not follow the theme. A button *without* one falls back to
+ * the theme's own plane, and there the text has to be the theme's own — dark
+ * ink on `surface2` was black on near-black on every tablet in dark mode,
+ * which is most of a board once the builder has left the colours alone.
+ */
+@Composable
+@ReadOnlyComposable
+internal fun inkOn(tint: Color?): Color = if (tint != null) Color(0xFF1A1A1D) else Vorlaut.colors.text
 
 /** `#RRGGBB` only — the importer already normalised `rgb(...)` and dropped the rest. */
 internal fun parseHex(value: String?): Color? {
