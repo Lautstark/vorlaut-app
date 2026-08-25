@@ -10,7 +10,8 @@
   must never have its bytes leave the device, and the cheapest way to guarantee
   that is an app with no way to send them.
 -->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <application
         android:allowBackup="false"
@@ -18,8 +19,10 @@
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@android:drawable/ic_menu_agenda"
         android:label="@string/app_name"
+        android:localeConfig="@xml/locales_config"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Vorlaut">
+        android:theme="@style/Theme.Vorlaut"
+        tools:targetApi="33">
 
         <activity
             android:name=".MainActivity"
