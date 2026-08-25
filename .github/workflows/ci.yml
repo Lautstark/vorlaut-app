@@ -18,6 +18,17 @@ on:
   push:
   pull_request:
     types: [opened, synchronize, reopened]
+  # Releasing without reaching for a terminal. Same job, same gate: the three
+  # verification jobs still have to pass before it publishes anything, and the tag
+  # still ends up existing - `gh release create` creates it at the commit being
+  # built, so a release made this way is indistinguishable afterwards from one
+  # made by pushing a tag.
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release, without the v - for example 0.2.0"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -98,28 +109,95 @@ jobs:
       - name: Check formatting
         run: ./gradlew spotlessCheck
 
-  # Publishes a signed APK to a GitHub Release, and only ever for a v* tag.
+  # Leaves a signed, installable APK behind on every push to main, as a build
+  # artifact rather than a release. Releases are for families; this is for whoever
+  # needs to put the current main on a tablet and try it, without cutting a version
+  # to do it.
+  #
+  # It is signed with the release key rather than the debug one on purpose. A
+  # debug-signed APK cannot be installed over a real release or updated from one,
+  # so the person most likely to want a snapshot - a tester who already has v0.1.0
+  # on the tablet - is exactly the person it would not work for.
+  #
+  # versionCode stays at whatever the latest tag packs to, so a snapshot installs
+  # over that release and a later release installs over the snapshot. Snapshots are
+  # therefore not ordered against each other: they are for trying main, not for
+  # running a fleet on.
+  snapshot:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [parser, android, format]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # Tags are needed to work out which release this snapshot sits on top of.
+          fetch-depth: 0
+      - name: Install JDK
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+
+      - name: Derive a snapshot version
+        id: version
+        run: |
+          set -euo pipefail
+          latest="$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' 2>/dev/null || echo v0.0.0)"
+          version="${latest#v}"
+          IFS=. read -r major minor patch <<<"$version"
+          echo "name=$version-dev.${GITHUB_SHA:0:7}" >> "$GITHUB_OUTPUT"
+          echo "code=$(( major * 10000 + minor * 100 + patch ))" >> "$GITHUB_OUTPUT"
+          echo "short=${GITHUB_SHA:0:7}" >> "$GITHUB_OUTPUT"
+
+      - name: Build a signed APK
+        id: apk
+        uses: ./.github/actions/build-signed-apk
+        with:
+          version-name: ${{ steps.version.outputs.name }}
+          version-code: ${{ steps.version.outputs.code }}
+          keystore-base64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          keystore-password: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          key-alias: ${{ secrets.RELEASE_KEY_ALIAS }}
+          key-password: ${{ secrets.RELEASE_KEY_PASSWORD }}
+
+      - name: Upload the snapshot
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: vorlaut-main-${{ steps.version.outputs.short }}
+          path: ${{ steps.apk.outputs.apk }}
+          # Long enough to be useful to whoever asks for "the current one", short
+          # enough that unreleased builds do not accumulate indefinitely.
+          retention-days: 14
+
+  # Publishes a signed APK to a GitHub Release. Either a v* tag was pushed, or
+  # somebody ran this workflow from the Actions tab and gave it a version.
   #
   # `needs:` is what makes this "green, then publish" rather than a convention:
   # the job cannot start until the parser suite, the Android build and the format
   # check have all succeeded on the same commit, and a failure in any of them
-  # leaves the tag with no release rather than with an untested binary.
+  # leaves the tag with no release rather than with an untested binary. That holds
+  # for the button too - it is a different way to ask for a release, not a way
+  # around the gate.
   #
   # `contents: write` is granted here and nowhere else. The workflow's own
-  # permission block stays read-only, so the three verification jobs - the ones
-  # that run project code and third-party Gradle plugins - cannot write to the
-  # repository even if something in the build tries to.
+  # permission block stays read-only, so the verification jobs - the ones that run
+  # project code and third-party Gradle plugins - cannot write to the repository
+  # even if something in the build tries to.
   #
   # The upload uses the pre-installed `gh` CLI rather than a release action. This
-  # is the one job that holds the signing key, and every action it runs is another
-  # party with access to that runner; `gh release create` is one fewer.
+  # is the one job that holds the signing key and can write to the repository, and
+  # every action it runs is another party with access to that; `gh release create`
+  # is one fewer.
   #
-  # Unlike the three above, this job is not a candidate for a required status
-  # check: the `if:` skips it on every push that is not a tag, and a required
-  # check that is usually skipped tells you nothing about the change in front of
-  # you. The verification jobs are the ones to require.
+  # Unlike the verification jobs, this one is not a candidate for a required status
+  # check: the `if:` skips it on every push that is not a tag, and a required check
+  # that is usually skipped tells you nothing about the change in front of you.
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     needs: [parser, android, format]
     runs-on: ubuntu-latest
     permissions:
@@ -137,121 +215,82 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
 
-      # The tag is the only place a version is written down. versionName is the
-      # tag without its v; versionCode is packed from the same three numbers, so
-      # it rises with the version and never has to be remembered separately. That
-      # packing holds while minor and patch stay below 100, which the tag shape
-      # check below does not enforce - if this project ever cuts 0.100.0, this is
-      # the line to revisit.
-      - name: Derive version from tag
+      # The version comes from the tag, or from what was typed into the button, and
+      # is checked the same way either way - a typo in a form field is at least as
+      # likely as a mistyped tag. versionName is the version; versionCode is packed
+      # from the same three numbers, so it rises with the version and never has to
+      # be remembered separately. That packing holds while minor and patch stay
+      # below 100 - if this project ever cuts 0.100.0, this is the line to revisit.
+      - name: Derive the version
         id: version
         run: |
           set -euo pipefail
-          version="${GITHUB_REF_NAME#v}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            version='${{ inputs.version }}'
+            source="the version given to this workflow"
+          else
+            version="${GITHUB_REF_NAME#v}"
+            source="tag ${GITHUB_REF_NAME}"
+          fi
+          version="$(printf '%s' "$version" | tr -d '[:space:]')"
+          version="${version#v}"
           if ! printf '%s' "$version" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
-            echo "::error::Tag ${GITHUB_REF_NAME} is not vMAJOR.MINOR.PATCH, so no version can be derived from it."
+            echo "::error::'$version' ($source) is not MAJOR.MINOR.PATCH, so no version can be derived from it."
             exit 1
           fi
           IFS=. read -r major minor patch <<<"$version"
           echo "name=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
           echo "code=$(( major * 10000 + minor * 100 + patch ))" >> "$GITHUB_OUTPUT"
 
-      - name: Restore signing keystore
+      # Checked before the build rather than after it, so a version that is already
+      # out fails in seconds instead of after a full release build. gh release
+      # create would refuse anyway; this only makes it say so sooner, and say why.
+      - name: Refuse to republish a version
         env:
-          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          if [ -z "${RELEASE_KEYSTORE_BASE64:-}" ]; then
-            echo "::error::The RELEASE_KEYSTORE_BASE64 secret is unset, so this release could only be unsigned. See docs/releasing.md."
-            exit 1
-          fi
-          # Whitespace is stripped before decoding. Different base64 tools wrap
-          # their output at different widths and a pasted secret can pick up a
-          # stray newline, which would arrive here as a keystore that is merely
-          # corrupt - the least legible way for this to fail.
-          printf '%s' "$RELEASE_KEYSTORE_BASE64" | tr -d '[:space:]' | base64 -d > "$RUNNER_TEMP/release.jks"
-          if [ ! -s "$RUNNER_TEMP/release.jks" ]; then
-            echo "::error::RELEASE_KEYSTORE_BASE64 did not decode to anything. Re-encode the keystore and set the secret again; see docs/releasing.md."
+          if gh release view "${{ steps.version.outputs.tag }}" >/dev/null 2>&1; then
+            echo "::error::${{ steps.version.outputs.tag }} has already been released. A published release is not overwritten - delete the release and its tag first, or pick the next version. See docs/releasing.md."
             exit 1
           fi
 
-      - name: Assemble signed release APK
-        env:
-          RELEASE_KEYSTORE: ${{ runner.temp }}/release.jks
-          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
-          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
-          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
-        run: |
-          ./gradlew :app:assembleRelease \
-            -Prelease.versionCode=${{ steps.version.outputs.code }} \
-            -Prelease.versionName=${{ steps.version.outputs.name }}
-
-      # The build is not asked whether it signed the APK - the APK is. A missing
-      # or wrong secret, a bad alias and a corrupt keystore all end in the same
-      # place, an artifact that installs nowhere, and only the artifact itself can
-      # rule all of them out. The certificate is printed so the log records which
-      # key a given release went out under.
-      #
-      # An unsigned build does not merely fail this check, it never reaches it:
-      # AGP writes app-release-unsigned.apk under that name instead, so the path
-      # below is absent. Both endings stop the job, and the explicit test is here
-      # so the log says which one happened.
-      - name: Verify the APK is signed
-        run: |
-          set -euo pipefail
-          apk=app/build/outputs/apk/release/app-release.apk
-          if [ ! -f "$apk" ]; then
-            echo "::error::No $apk. The build produced $(ls app/build/outputs/apk/release/*.apk 2>/dev/null || echo 'no APK at all'), which means it did not sign anything. Check the signing secrets against docs/releasing.md."
-            exit 1
-          fi
-          sdk="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
-          apksigner="$(find "$sdk/build-tools" -name apksigner 2>/dev/null | sort -V | tail -n 1 || true)"
-          if [ -z "$apksigner" ]; then
-            echo "::error::No apksigner found under '$sdk/build-tools', so the signature cannot be verified. Refusing to publish an APK nobody has checked."
-            exit 1
-          fi
-          "$apksigner" verify --verbose --print-certs "$apk"
-
-          # Signed is necessary but not sufficient: signed with *the same key as
-          # last time* is the property that matters. A device accepts an update
-          # only from the key that installed the app and refuses any other one
-          # outright, so a swapped keystore does not degrade anything - it strands
-          # everyone who already has the app on an install they cannot update and
-          # can only replace, losing its data. Nothing about such a build looks
-          # wrong: it compiles, it signs, it verifies. The pin is what tells the
-          # two apart, and it is checked here, before anything is published.
-          expected="$(sed -n 's/^release\.certificateSha256=//p' gradle.properties | tr -d ' \r' | tr '[:upper:]' '[:lower:]' | tr -d ':')"
-          actual="$("$apksigner" verify --print-certs "$apk" | sed -n 's/.*certificate SHA-256 digest: *//p' | head -n 1 | tr -d ' \r' | tr '[:upper:]' '[:lower:]' | tr -d ':')"
-
-          if [ -z "$expected" ]; then
-            echo "::error::release.certificateSha256 is unset in gradle.properties, so there is nothing to check this key against. This APK was signed with $actual - if that is the release key, put it there and tag again. See docs/releasing.md."
-            exit 1
-          fi
-          if [ "$expected" != "$actual" ]; then
-            echo "::error::Wrong signing key. gradle.properties pins $expected, this APK is signed with $actual. Publishing it would strand every device that already has the app on an update it must refuse. Either the RELEASE_KEYSTORE_BASE64 secret is not the release keystore, or the key changed deliberately - see docs/releasing.md before touching the pin."
-            exit 1
-          fi
-          echo "Signing key matches the pin ($expected)."
+      - name: Build a signed APK
+        id: apk
+        uses: ./.github/actions/build-signed-apk
+        with:
+          version-name: ${{ steps.version.outputs.name }}
+          version-code: ${{ steps.version.outputs.code }}
+          keystore-base64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          keystore-password: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          key-alias: ${{ secrets.RELEASE_KEY_ALIAS }}
+          key-password: ${{ secrets.RELEASE_KEY_PASSWORD }}
 
       - name: Name the artifact after its version
         id: artifact
         run: |
           set -euo pipefail
           apk="vorlaut-${{ steps.version.outputs.name }}.apk"
-          cp app/build/outputs/apk/release/app-release.apk "$apk"
+          cp "${{ steps.apk.outputs.apk }}" "$apk"
           sha256sum "$apk" > "$apk.sha256"
           echo "apk=$apk" >> "$GITHUB_OUTPUT"
 
-      # An APK downloaded from a release page is sideloaded, so the checksum goes
-      # up beside it: it is the only way someone installing this outside a store
-      # can tell that what they fetched is what this run built.
+      # An APK downloaded from a release page is sideloaded, so the checksum goes up
+      # beside it: it is the only way someone installing this outside a store can
+      # tell that what they fetched is what this run built.
+      #
+      # --target names the commit explicitly. On a tag push it is the tag's own
+      # commit and changes nothing; from the button there is no tag yet, and this is
+      # what creates it at the commit that was actually built and verified.
       - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh release create "$GITHUB_REF_NAME" \
+          gh release create "${{ steps.version.outputs.tag }}" \
             "${{ steps.artifact.outputs.apk }}" \
             "${{ steps.artifact.outputs.apk }}.sha256" \
+            --target "$GITHUB_SHA" \
             --title "vorlaut ${{ steps.version.outputs.name }}" \
             --generate-notes

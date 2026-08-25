@@ -1,13 +1,22 @@
 # Cutting a release
 
 A release is a git tag. Pushing `vMAJOR.MINOR.PATCH` builds a signed APK and
-attaches it to a GitHub Release; nothing else publishes anything, and there is no
-button to press.
+attaches it to a GitHub Release.
 
 ```bash
 git tag v0.2.0
 git push origin v0.2.0
 ```
+
+Or, without a terminal: **Actions → CI → Run workflow**, and type `0.2.0`. It runs
+the same jobs behind the same gate and creates the tag itself, at the commit it
+built, so a release made this way is indistinguishable from one made by pushing a
+tag. The version box is validated the same way a tag is — a typo in a form field
+is at least as likely as a mistyped tag — and a version that is already released
+is refused before the build starts rather than after it.
+
+Both routes publish. Nothing else does: merging to main leaves a
+[snapshot](#snapshots-of-main) behind, not a release.
 
 ## What the tag sets off
 
@@ -164,11 +173,33 @@ release APK comes out unsigned and no signing config is created at all. It is no
 signed with the debug key, because a release artifact that installs anywhere is
 the thing worth being unable to produce by accident.
 
+## Snapshots of main
+
+Every push to main also builds a signed APK and attaches it to the workflow run as
+an artifact, kept for 14 days. It is not a release: it appears at the bottom of the
+run page in Actions, not on the releases page, and nobody outside the project sees
+it. It is there for whoever needs to put the current main on a tablet and try it
+without cutting a version to do so.
+
+It is signed with the release key rather than the debug one, which is the point. A
+debug-signed APK cannot be installed over a real release or updated from one, so
+the person most likely to want a snapshot — a tester who already has the released
+version on the tablet — is exactly the person it would not work for. The snapshot
+goes through the same key check as a release: same pin, same refusal.
+
+Its `versionName` is the latest release plus the commit, `0.1.0-dev.a1b2c3d`, and
+its `versionCode` is the latest release's. So a snapshot installs over that release
+and a later release installs over the snapshot, but snapshots are not ordered
+against each other — they are for trying main, not for running a fleet on. If two
+snapshots need to be told apart on a device, read the version name in the app or
+reinstall.
+
 ## Re-running a release
 
-`gh release create` fails if a release already exists for the tag, and that
-failure is deliberate — a published release is not overwritten by a re-run. To
-redo one, delete the release and its tag first, then push the tag again.
+A published release is not overwritten. The job checks before it builds and
+refuses, and `gh release create` would refuse anyway; the early check only makes
+it say so in seconds rather than after a full release build. To redo one, delete
+the release and its tag first, then tag again or run the workflow again.
 
 ## The APK is sideloaded
 
