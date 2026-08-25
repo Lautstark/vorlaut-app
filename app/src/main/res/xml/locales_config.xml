@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The two languages the app actually has, declared so that Android's own
+  per-app language picker offers them. Without this file the setting does not
+  appear at all and the app can only follow the system language — which is the
+  wrong constraint for this app in particular: the tablet belongs to a family,
+  and the adult setting it up is not always speaking the language the tablet
+  was set up in.
+
+  German is first because res/values is German; res/values-en is the
+  translation. Adding a third language means a res/values-xx and a line here,
+  in that order.
+-->
+<locale-config xmlns:android="http://schemas.android.com/apk/res/android">
+    <locale android:name="de" />
+    <locale android:name="en" />
+</locale-config>
