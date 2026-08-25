@@ -59,7 +59,7 @@ Exported from a tablet Sammlung with two pages, made through the page by
 | Grid | 3×5, the same on both boards |
 | Boards | `board-1` (root, blue), `board-2` "Essen" (green), reached by one button |
 | Buttons | three appending, one navigating, and `:speak`, `:clear`, `:home` |
-| Colours | Modified Fitzgerald Key, as `background_color` per button |
+| Colours | Modified Fitzgerald Key, as `background_color` per button. No page colour — the builder stopped writing `ext_lautstark_board_color` for tablet Sammlungen. |
 | Pictures | one PNG, uploaded rather than picked — so `symbol_source: none` |
 | Recordings | Ogg Opus, on the appending buttons only |
 | Voice | `de-DE-KatjaNeural`, `locale: de-DE` |
@@ -68,7 +68,7 @@ Two of its buttons share one clip. That is not a defect: the stand-in
 synthesiser answers two of these sentences identically and content-addressed
 naming writes one member for them, which the test asserts rather than tolerates.
 
-**Cut from vorlaut-diy-talker@7fcb727, 2026-08-24.**
+**Cut from vorlaut-diy-talker@70a2614, 2026-08-25.**
 
 ## Cutting a new one
 
