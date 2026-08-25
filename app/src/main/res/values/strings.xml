@@ -56,7 +56,7 @@
     <string name="leave_board">Lange drücken, um die Tafel zu verlassen</string>
 
     <string name="pin_choose_title">PIN wählen</string>
-    <string name="pin_choose_body">Mindestens vier Ziffern. Damit kommst du wieder aus der Tafel heraus, wenn das Tablet aus der Hand gegeben ist — nimm etwas, worüber du nicht nachdenken musst.</string>
+    <string name="pin_choose_body">Vier Ziffern. Damit kommst du wieder aus der Tafel heraus, wenn das Tablet aus der Hand gegeben ist — nimm etwas, worüber du nicht nachdenken musst.</string>
     <string name="pin_enter_title">PIN eingeben</string>
     <string name="pin_enter_body">Damit wird die Tafel verlassen und das Tablet wieder freigegeben.</string>
     <string name="pin_set">PIN setzen</string>

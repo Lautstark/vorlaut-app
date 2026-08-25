@@ -1,5 +1,8 @@
 package de.lautstark.vorlaut.app
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -30,16 +33,22 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
@@ -56,6 +65,7 @@ import de.lautstark.vorlaut.boardpackage.MessageBar
 import kotlinx.coroutines.launch
 
 private val BAR_HEIGHT = 132.dp
+private val HOLD_MILLIS = 1200L
 private val ENTRY_WIDTH = 96.dp
 
 /**
@@ -142,20 +152,20 @@ private fun SentenceBar(
         Modifier.fillMaxWidth().height(BAR_HEIGHT),
         horizontalArrangement = Arrangement.spacedBy(gap),
     ) {
-        // The way out, and the only control here that is not the child's. A
-        // plain button is one a child presses mid-sentence and lands in a file
-        // list; a long press is deliberate. It is the mark because the mark had
-        // to go somewhere anyway.
-        Box(
-            Modifier
-                .fillMaxHeight()
-                .width(62.dp)
-                .clip(RoundedCornerShape(Vorlaut.metrics.radius))
-                .background(c.surface2)
-                .pointerInput(handedOver) { detectTapGestures(onLongPress = { onLeave() }) }
-                .semantics { contentDescription = leaveLabel },
-            contentAlignment = Alignment.Center,
-        ) { VorlautMark(Modifier.size(34.dp)) }
+        // The way out, and the only control here that is not the child's.
+        //
+        // A 6dp handle in an 18dp column, replacing the 62dp tile that carried
+        // the mark. The test the tile failed was that the person who asked for
+        // it read the commit and still had to ask what the icon was for: it
+        // looked like the wordmark on the other two screens, sat in a tile
+        // styled exactly like the page arrows, and gave no hint that it wanted
+        // holding rather than tapping.
+        //
+        // The ring is the affordance. It starts filling the instant a finger
+        // lands, so "keep holding" is learned rather than written somewhere
+        // nobody reads — and a stray tap does nothing at all, which is the
+        // whole point of putting the way out behind a hold.
+        ExitHandle(onLeave = onLeave, label = leaveLabel)
 
         // The arrows are always here and never move. Reserving the space costs
         // a little width that is usually idle and buys that the entries never
@@ -428,5 +438,86 @@ private fun Chevron(
                 }
             }
         drawPath(p, colour, style = Stroke(2.6f * u, cap = StrokeCap.Round))
+    }
+}
+
+/**
+ * Hold to leave the board.
+ *
+ * The visible mark is 6dp wide; the target around it is the full height of the
+ * bar and 18dp across. A 6dp button would be a cruelty — a 6dp mark on a target
+ * a hand can find is a handle, which is what it should read as.
+ */
+@Composable
+private fun ExitHandle(
+    onLeave: () -> Unit,
+    label: String,
+) {
+    val c = Vorlaut.colors
+    var pressed by remember { mutableStateOf(false) }
+
+    // The ring fills over the hold and falls away quickly when the finger
+    // lifts, so an abandoned hold does not leave a half-drawn mark sitting
+    // there implying something happened.
+    val held by animateFloatAsState(
+        targetValue = if (pressed) 1f else 0f,
+        animationSpec =
+            tween(
+                durationMillis = if (pressed) HOLD_MILLIS.toInt() else 140,
+                easing = LinearEasing,
+            ),
+        label = "exit-hold",
+        finishedListener = { value -> if (value == 1f) onLeave() },
+    )
+
+    Box(
+        Modifier
+            .fillMaxHeight()
+            .width(18.dp)
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onPress = {
+                        pressed = true
+                        // Returns false when the gesture is cancelled — a scroll
+                        // taking over, or a finger sliding off — and either way
+                        // the hold is abandoned rather than completed.
+                        tryAwaitRelease()
+                        pressed = false
+                    },
+                )
+            }.semantics { contentDescription = label },
+        contentAlignment = Alignment.Center,
+    ) {
+        Canvas(Modifier.fillMaxSize()) {
+            val pill = 6.dp.toPx()
+            val h = 46.dp.toPx()
+            val left = (size.width - pill) / 2f
+            val top = (size.height - h) / 2f
+            val radius = CornerRadius(pill / 2f)
+
+            drawRoundRect(
+                color = c.line,
+                topLeft = Offset(left, top),
+                size = Size(pill, h),
+                cornerRadius = radius,
+            )
+
+            // The handle fills rather than growing a ring around itself. A ring
+            // wide enough to read needs 44dp and this column is 18 — on Android
+            // the surplus is simply clipped, so half of it never arrives. The
+            // fill also puts the feedback exactly under the finger that caused
+            // it, which a ring around the finger does not.
+            if (held > 0f) {
+                val grown = h * held
+                clipRect(left, top, left + pill, top + h) {
+                    drawRoundRect(
+                        color = c.accent,
+                        topLeft = Offset(left, top + (h - grown)),
+                        size = Size(pill, grown),
+                        cornerRadius = radius,
+                    )
+                }
+            }
+        }
     }
 }

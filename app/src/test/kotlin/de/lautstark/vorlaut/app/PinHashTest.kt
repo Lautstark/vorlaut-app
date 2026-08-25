@@ -39,12 +39,15 @@ class PinHashTest {
     }
 
     @Test
-    fun `a pin has to be digits and long enough`() {
+    fun `a pin is exactly four digits`() {
         assertFalse(PinHash.isAcceptable("123"))
         assertFalse(PinHash.isAcceptable("12a4"))
         assertFalse(PinHash.isAcceptable(""))
         assertTrue(PinHash.isAcceptable("1234"))
-        assertTrue(PinHash.isAcceptable("1234567"))
+        // Longer is no longer acceptable: the field is four boxes, so a longer
+        // PIN is one the caregiver could set and then have nowhere to type.
+        assertFalse(PinHash.isAcceptable("12345"))
+        assertFalse(PinHash.isAcceptable("1234567"))
     }
 
     @Test

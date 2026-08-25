@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -24,11 +25,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
@@ -39,6 +44,7 @@ import de.lautstark.vorlaut.app.design.Btn
 import de.lautstark.vorlaut.app.design.BtnTier
 import de.lautstark.vorlaut.app.design.Txt
 import de.lautstark.vorlaut.app.design.Vorlaut
+import kotlinx.coroutines.delay
 
 /** Why the PIN is being asked for, which decides the wording and the rules. */
 enum class PinPurpose { Choose, Unlock }
@@ -67,7 +73,7 @@ fun PinPrompt(
     // them, which turns one mistyped PIN into a locked-out feeling.
     LaunchedEffect(wrong) { if (wrong) entry = "" }
 
-    val tooShort = entry.length < PinHash.MIN_LENGTH
+    val incomplete = entry.length < PinHash.LENGTH
 
     Dialog(onDismissRequest = { if (!busy) onDismiss() }) {
         Column(
@@ -94,36 +100,11 @@ fun PinPrompt(
                 modifier = Modifier.padding(top = 8.dp),
             )
 
-            // A field is a fill, not a hole (design.md §4.3): --surface-2 at
-            // rest, lifting to --surface with an accent border on focus.
-            var focused by remember { mutableStateOf(false) }
-            BasicTextField(
+            PinBoxes(
                 value = entry,
-                onValueChange = { entry = it.filter(Char::isDigit) },
+                onValueChange = { entry = it },
                 enabled = !busy,
-                singleLine = true,
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                textStyle =
-                    Vorlaut.type.body.copy(
-                        fontSize = 30.sp,
-                        letterSpacing = 0.5.em,
-                        textAlign = TextAlign.Center,
-                        color = c.text,
-                    ),
-                cursorBrush = SolidColor(c.accent),
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(top = 16.dp)
-                        .clip(RoundedCornerShape(Vorlaut.metrics.radiusSm))
-                        .background(if (focused) c.surface else c.surface2)
-                        .border(
-                            1.dp,
-                            if (focused) c.accent else Color.Transparent,
-                            RoundedCornerShape(Vorlaut.metrics.radiusSm),
-                        ).padding(vertical = 12.dp, horizontal = 13.dp)
-                        .onFocusChanged { focused = it.isFocused },
+                wrong = wrong,
             )
 
             if (wrong) {
@@ -147,7 +128,7 @@ fun PinPrompt(
                     ),
                     { onSubmit(entry) },
                     tier = BtnTier.Primary,
-                    enabled = !tooShort && !busy,
+                    enabled = !incomplete && !busy,
                 )
             }
         }
@@ -157,3 +138,108 @@ fun PinPrompt(
 private val Double.em get() =
     androidx.compose.ui.unit
         .TextUnit(this.toFloat(), androidx.compose.ui.unit.TextUnitType.Em)
+
+/**
+ * Four boxes, one digit each.
+ *
+ * One field with four characters in it asks the person to count what they have
+ * typed. Boxes say how many are wanted before a digit is entered and how many
+ * are in, and the confirm cannot be reached with three — a short PIN is not a
+ * thing this control can express.
+ *
+ * Masked, with the digit showing for a moment as it lands. The threat model for
+ * this PIN is a child in the room, which is the same child it keeps out: long
+ * enough to confirm the finger hit the right key, short enough that somebody
+ * across the table reads four dots.
+ */
+@Composable
+private fun PinBoxes(
+    value: String,
+    onValueChange: (String) -> Unit,
+    enabled: Boolean,
+    wrong: Boolean,
+) {
+    val c = Vorlaut.colors
+    val focus = remember { FocusRequester() }
+    var revealed by remember { mutableStateOf(-1) }
+
+    LaunchedEffect(value) {
+        if (value.isEmpty()) {
+            revealed = -1
+        } else {
+            revealed = value.lastIndex
+            delay(700)
+            revealed = -1
+        }
+    }
+    LaunchedEffect(Unit) { focus.requestFocus() }
+
+    Box(Modifier.padding(top = 18.dp)) {
+        // One real field behind four drawn boxes. Four separate inputs would
+        // each need their own focus plumbing, and a hardware keyboard or a
+        // paste would have to be taught to walk between them; one field gets
+        // all of that from the platform and the boxes are only its face.
+        BasicTextField(
+            value = value,
+            onValueChange = { fresh ->
+                onValueChange(fresh.filter(Char::isDigit).take(PinHash.LENGTH))
+            },
+            enabled = enabled,
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focus)
+                    // Invisible rather than absent: it has to stay in the layout to
+                    // keep focus and the keyboard.
+                    .alpha(0f),
+        )
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+        ) {
+            repeat(PinHash.LENGTH) { i ->
+                val filled = i < value.length
+                val here = i == value.length && enabled
+                Box(
+                    Modifier
+                        .width(66.dp)
+                        .height(80.dp)
+                        .clip(RoundedCornerShape(Vorlaut.metrics.radiusSm))
+                        .background(
+                            when {
+                                wrong -> c.dangerSoft
+                                filled || here -> c.surface
+                                else -> c.surface2
+                            },
+                        ).border(
+                            width = if (here) 2.dp else 1.dp,
+                            color =
+                                when {
+                                    // Wrong marks every box, because the PIN is
+                                    // wrong rather than any one digit of it.
+                                    wrong -> c.danger
+
+                                    here -> c.accent
+
+                                    filled -> c.line
+
+                                    else -> Color.Transparent
+                                },
+                            shape = RoundedCornerShape(Vorlaut.metrics.radiusSm),
+                        ).clickable(enabled = enabled) { focus.requestFocus() },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (filled) {
+                        Txt(
+                            if (i == revealed) value[i].toString() else "•",
+                            style = Vorlaut.type.body.copy(fontSize = 32.sp, fontWeight = FontWeight.SemiBold),
+                            color = c.text,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
