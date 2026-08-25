@@ -66,6 +66,29 @@ import kotlinx.coroutines.launch
 
 private val BAR_HEIGHT = 132.dp
 private val HOLD_MILLIS = 1200L
+
+/**
+ * The bar's proportions, and why they are these numbers.
+ *
+ * The controls used to take 546dp of a 940dp bar — 58% of it — which left room
+ * for three tiles of sentence. They are the adult's three buttons; the sentence
+ * is what the screen is for. At 418dp they take 45%, and four tiles fit at the
+ * same size rather than being shrunk to make room.
+ *
+ * [SCREEN_MARGIN] is larger than [Vorlaut.metrics.gap] on purpose, and so is
+ * [BAR_TO_GRID]. The rule that every gutter is one number was about the gutters
+ * *inside* the grid — the build before this one set a padding on the grid and
+ * another inside each cell, so the outer columns silently carried both. Giving
+ * the screen's edge and the seam between two different surfaces their own
+ * values is not that mistake; every cell-to-cell gap is still identical, and so
+ * is every edge.
+ */
+private val SCREEN_MARGIN = 16.dp
+private val BAR_TO_GRID = 22.dp
+private val ARROW_WIDTH = 48.dp
+private val SPEAK_WIDTH = 112.dp
+private val CONTROL_WIDTH = 96.dp
+private val CONTROL_ICON = 52.dp
 private val ENTRY_WIDTH = 96.dp
 
 /**
@@ -100,8 +123,8 @@ fun TalkerScreen(
             // row is half under the clock is a talker with a row of unreachable
             // buttons.
             .windowInsetsPadding(WindowInsets.safeDrawing)
-            .padding(gap),
-        verticalArrangement = Arrangement.spacedBy(gap),
+            .padding(SCREEN_MARGIN),
+        verticalArrangement = Arrangement.spacedBy(BAR_TO_GRID),
     ) {
         SentenceBar(
             entries = state.entries,
@@ -277,7 +300,7 @@ private fun PageArrow(
     Box(
         Modifier
             .fillMaxHeight()
-            .width(62.dp)
+            .width(ARROW_WIDTH)
             .alpha(if (enabled) 1f else 0.32f)
             .clip(RoundedCornerShape(Vorlaut.metrics.radius))
             .background(c.surface2)
@@ -298,7 +321,7 @@ private fun BarControl(
     Column(
         Modifier
             .fillMaxHeight()
-            .width(if (primary) 168.dp else 118.dp)
+            .width(if (primary) SPEAK_WIDTH else CONTROL_WIDTH)
             .alpha(if (enabled) 1f else 0.32f)
             .clip(RoundedCornerShape(Vorlaut.metrics.radius))
             .background(if (primary && enabled) c.accent else c.surface2)
@@ -306,11 +329,12 @@ private fun BarControl(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Box(Modifier.size(66.dp), contentAlignment = Alignment.Center) { icon() }
+        Box(Modifier.size(CONTROL_ICON), contentAlignment = Alignment.Center) { icon() }
         Txt(
             label.uppercase(),
-            style = Vorlaut.type.caption,
+            style = Vorlaut.type.caption.copy(fontSize = 11.sp),
             color = if (primary && enabled) c.accentInk else c.textDim,
+            maxLines = 1,
         )
     }
 }
@@ -323,7 +347,7 @@ private fun BarControl(
 @Composable
 private fun SpeakIcon() {
     val ink = Vorlaut.colors.accentInk
-    Canvas(Modifier.size(48.dp)) {
+    Canvas(Modifier.size(40.dp)) {
         val u = size.minDimension / 24f
         val body =
             Path().apply {
@@ -364,7 +388,7 @@ private fun SpeakIcon() {
 @Composable
 private fun UndoIcon() {
     val ink = Vorlaut.colors.textDim
-    Canvas(Modifier.size(48.dp)) {
+    Canvas(Modifier.size(40.dp)) {
         val u = size.minDimension / 24f
         val s = Stroke(2.2f * u, cap = StrokeCap.Round)
         val arrow =
@@ -387,7 +411,7 @@ private fun UndoIcon() {
 @Composable
 private fun ClearIcon() {
     val ink = Vorlaut.colors.textDim
-    Canvas(Modifier.size(48.dp)) {
+    Canvas(Modifier.size(40.dp)) {
         val u = size.minDimension / 24f
         val s = Stroke(2.2f * u, cap = StrokeCap.Round)
         drawLine(
@@ -423,7 +447,7 @@ private fun Chevron(
     back: Boolean,
     colour: Color,
 ) {
-    Canvas(Modifier.size(38.dp)) {
+    Canvas(Modifier.size(32.dp)) {
         val u = size.minDimension / 24f
         val p =
             Path().apply {

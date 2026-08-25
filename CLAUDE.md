@@ -28,6 +28,14 @@ The main checkout at `~/Code/vorlaut-app` belongs to whoever is passing through;
 do not assume it is still on the branch you left it on, and do not leave your
 work in it.
 
+A fresh worktree has no `local.properties` — it is git-ignored, so it does not
+come with you, and Gradle stops with "SDK location not found" before it
+compiles anything:
+
+```bash
+echo "sdk.dir=$HOME/Library/Android/sdk" > local.properties
+```
+
 ## 2. Say who you are, first
 
 Before the first edit, not afterwards:
