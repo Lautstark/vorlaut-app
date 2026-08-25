@@ -38,7 +38,7 @@
     <string name="leave_board">Press and hold to leave the board</string>
 
     <string name="pin_choose_title">Choose a PIN</string>
-    <string name="pin_choose_body">At least four digits. It is what gets you back out of the board once the tablet is handed over, so pick something you will not have to think about.</string>
+    <string name="pin_choose_body">Four digits. It is what gets you back out of the board once the tablet is handed over, so pick something you will not have to think about.</string>
     <string name="pin_enter_title">Enter the PIN</string>
     <string name="pin_enter_body">This leaves the board and releases the tablet.</string>
     <string name="pin_set">Set PIN</string>

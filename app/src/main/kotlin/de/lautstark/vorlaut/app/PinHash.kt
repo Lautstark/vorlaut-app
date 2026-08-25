@@ -27,8 +27,16 @@ object PinHash {
     private const val KEY_BITS = 256
     private const val SALT_BYTES = 16
 
-    /** The shortest PIN worth calling one. */
-    const val MIN_LENGTH = 4
+    /**
+     * Exactly four digits, because the field is four boxes.
+     *
+     * It was "at least four" while the field was one text input that could take
+     * any number. Four boxes make the length part of the shape of the control:
+     * the confirm cannot be reached with three, and there is nowhere to put a
+     * fifth. Four digits is ten thousand combinations either way — see the note
+     * at the top about what this is and is not protecting.
+     */
+    const val LENGTH = 4
 
     data class Stored(
         val salt: String,
@@ -36,7 +44,7 @@ object PinHash {
     )
 
     fun create(pin: String): Stored {
-        require(isAcceptable(pin)) { "a PIN must be at least $MIN_LENGTH digits" }
+        require(isAcceptable(pin)) { "a PIN must be exactly $LENGTH digits" }
         val salt = ByteArray(SALT_BYTES).also { SecureRandom().nextBytes(it) }
         return Stored(salt = encode(salt), digest = encode(derive(pin, salt)))
     }
@@ -52,7 +60,7 @@ object PinHash {
         return MessageDigest.isEqual(derive(pin, salt), expected)
     }
 
-    fun isAcceptable(pin: String): Boolean = pin.length >= MIN_LENGTH && pin.all { it.isDigit() }
+    fun isAcceptable(pin: String): Boolean = pin.length == LENGTH && pin.all { it.isDigit() }
 
     private fun derive(
         pin: String,
