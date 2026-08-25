@@ -47,7 +47,7 @@ import de.lautstark.vorlaut.app.design.Vorlaut
 import kotlinx.coroutines.delay
 
 /** Why the PIN is being asked for, which decides the wording and the rules. */
-enum class PinPurpose { Choose, Unlock }
+enum class PinPurpose { Choose, Unlock, Remove }
 
 /**
  * The handover sheet.
@@ -86,14 +86,22 @@ fun PinPrompt(
         ) {
             Txt(
                 stringResource(
-                    if (purpose == PinPurpose.Choose) R.string.pin_choose_title else R.string.pin_enter_title,
+                    when (purpose) {
+                        PinPurpose.Choose -> R.string.pin_choose_title
+                        PinPurpose.Unlock -> R.string.pin_enter_title
+                        PinPurpose.Remove -> R.string.pin_remove_title
+                    },
                 ),
                 style = Vorlaut.type.rowName,
                 color = c.text,
             )
             Txt(
                 stringResource(
-                    if (purpose == PinPurpose.Choose) R.string.pin_choose_body else R.string.pin_enter_body,
+                    when (purpose) {
+                        PinPurpose.Choose -> R.string.pin_choose_body
+                        PinPurpose.Unlock -> R.string.pin_enter_body
+                        PinPurpose.Remove -> R.string.pin_remove_body
+                    },
                 ),
                 style = Vorlaut.type.sub,
                 color = c.textDim,
@@ -124,7 +132,11 @@ fun PinPrompt(
                 Box(Modifier.size(9.dp))
                 Btn(
                     stringResource(
-                        if (purpose == PinPurpose.Choose) R.string.pin_set else R.string.pin_unlock,
+                        when (purpose) {
+                            PinPurpose.Choose -> R.string.pin_set
+                            PinPurpose.Unlock -> R.string.pin_unlock
+                            PinPurpose.Remove -> R.string.pin_remove
+                        },
                     ),
                     { onSubmit(entry) },
                     tier = BtnTier.Primary,

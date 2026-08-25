@@ -16,7 +16,6 @@
     <string name="add_collection">Sammlung hinzufügen</string>
     <string name="settings">Einstellungen</string>
     <string name="back">Zurück</string>
-    <string name="hand_over">Übergeben</string>
 
     <string name="empty_headline">Noch keine Sammlung auf diesem Gerät.</string>
     <string name="empty_body">Eine Sammlung kommt als .obz-Datei aus dem Editor. Öffne sie aus den Dateien, teile sie mit dieser App, oder hol sie unten herein.</string>
@@ -64,7 +63,6 @@
     <string name="pin_wrong">Das ist nicht die PIN.</string>
     <string name="cancel">Abbrechen</string>
 
-    <string name="pinning_off">Die PIN ist gesetzt, aber Androids App-Fixierung ist ausgeschaltet — die Home- und Übersichtstaste verlassen die Tafel weiterhin.</string>
     <string name="open_security_settings">Android-Sicherheitseinstellungen öffnen</string>
     <string name="w_image_missing">A picture is missing. The button shows its label only.</string>
     <string name="w_image_oversized">A picture is too large to show, so the button has none.</string>
@@ -78,4 +76,15 @@
     <string name="w_path_conflict">The collection disagrees with itself about where a file lives.</string>
     <string name="w_image_reference_ignored">A picture also pointed somewhere online. The one in the collection was used.</string>
     <string name="w_color_unparseable">A colour could not be read, so the standard one was used.</string>
+    <string name="pin_setting_title">PIN für den Weg aus der Tafel</string>
+    <string name="pin_setting_on">Es ist eine PIN gesetzt. Wer die Tafel verlassen will, muss sie eingeben.</string>
+    <string name="pin_setting_off">Keine PIN gesetzt. Die Tafel lässt sich durch langes Drücken am Griff verlassen.</string>
+    <string name="pin_set_up">PIN einrichten</string>
+    <string name="pin_change">PIN ändern</string>
+    <string name="pin_remove">PIN entfernen</string>
+    <string name="pinning_setting_title">Androids App-Fixierung</string>
+    <string name="pinning_on">Eingeschaltet. Die Home- und Übersichtstaste verlassen die Tafel nicht.</string>
+    <string name="pinning_off">Ausgeschaltet. Die Home- und Übersichtstaste verlassen die Tafel weiterhin — das kann nur in Androids Einstellungen geändert werden, nicht hier.</string>
+    <string name="pin_remove_title">PIN entfernen</string>
+    <string name="pin_remove_body">Gib die aktuelle PIN ein. Danach lässt sich die Tafel ohne PIN verlassen.</string>
 </resources>

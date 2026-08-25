@@ -9,8 +9,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * Handing the tablet over: pinning the app to the screen, and the PIN that lets
- * a caregiver back out of it.
+ * The PIN that lets a caregiver back out of the board, and Android's screen
+ * pinning where the device allows it.
+ *
+ * There was a "handed over" mode here, and it is gone. It toggled exactly one
+ * thing — whether leaving the board cost the PIN — on a device that is only
+ * ever in one situation: a child is holding it. The app already opens on the
+ * board and leaving already takes a deliberate hold, so the mode described a
+ * state that had no opposite. What is left is a setting: a PIN exists, or it
+ * does not.
  *
  * **What screen pinning does and does not guarantee.** This app is not a device
  * owner, so `startLockTask` puts it in Android's *pinned* mode rather than a
@@ -37,18 +44,6 @@ class Handover(
     val isPinSet: Boolean
         get() = stored() != null
 
-    /**
-     * Whether the tablet is currently handed over.
-     *
-     * Persisted rather than held for the session, because the case this feature
-     * exists for is the tablet being out of the caregiver's hands. If the app is
-     * killed — a crash, memory pressure, a battery dip — a guard that lived only
-     * in memory would come back unlocked at exactly the moment nobody is watching.
-     */
-    var isHandedOver: Boolean
-        get() = preferences.getBoolean(KEY_HANDED_OVER, false)
-        set(value) = preferences.edit { putBoolean(KEY_HANDED_OVER, value) }
-
     /** The package to reopen on a restart, so a restart lands back on the board. */
     var lastPackageId: String?
         get() = preferences.getString(KEY_LAST_PACKAGE, null)
@@ -69,6 +64,14 @@ class Handover(
                 putString(KEY_DIGEST, created.digest)
             }
         }
+
+    /** Forgetting the PIN. Only reachable behind entering the current one. */
+    fun removePin() {
+        preferences.edit {
+            remove(KEY_SALT)
+            remove(KEY_DIGEST)
+        }
+    }
 
     suspend fun verify(pin: String): Boolean =
         withContext(Dispatchers.Default) {
@@ -137,7 +140,6 @@ class Handover(
         const val STORE = "handover"
         const val KEY_SALT = "pin_salt"
         const val KEY_DIGEST = "pin_digest"
-        const val KEY_HANDED_OVER = "handed_over"
         const val KEY_LAST_PACKAGE = "last_package"
     }
 }

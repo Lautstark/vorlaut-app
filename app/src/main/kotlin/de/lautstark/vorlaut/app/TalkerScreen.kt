@@ -107,7 +107,6 @@ fun TalkerScreen(
     onUndo: () -> Unit,
     onClear: () -> Unit,
     onLeave: () -> Unit,
-    handedOver: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val board = state.board ?: return
@@ -133,7 +132,6 @@ fun TalkerScreen(
             onUndo = onUndo,
             onClear = onClear,
             onLeave = onLeave,
-            handedOver = handedOver,
         )
         Box(Modifier.fillMaxSize().weight(1f)) {
             BoardScreen(board = board, state = state, media = media, onPress = onPress)
@@ -149,7 +147,6 @@ private fun SentenceBar(
     onUndo: () -> Unit,
     onClear: () -> Unit,
     onLeave: () -> Unit,
-    handedOver: Boolean,
 ) {
     val c = Vorlaut.colors
     val gap = Vorlaut.metrics.gap
