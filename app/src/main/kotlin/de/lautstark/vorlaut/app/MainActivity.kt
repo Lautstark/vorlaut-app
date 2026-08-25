@@ -135,6 +135,17 @@ class MainActivity : ComponentActivity() {
                                     route = Route.Board
                                 },
                                 onWarnings = { route = Route.Warnings(it.boardPackage.id) },
+                                onRemove = { entry ->
+                                    // The board may still be holding this
+                                    // package open behind the list. Let it go
+                                    // before the files under it disappear.
+                                    val id = entry.boardPackage.id
+                                    if (handover.lastPackageId == id) {
+                                        handover.lastPackageId = null
+                                        boardModel.close()
+                                    }
+                                    model.remove(id)
+                                },
                                 onSettings = { route = Route.Settings },
                             )
                         }

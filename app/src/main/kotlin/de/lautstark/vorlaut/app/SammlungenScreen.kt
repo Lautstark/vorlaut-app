@@ -21,6 +21,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,9 +36,12 @@ import androidx.compose.ui.unit.dp
 import de.lautstark.vorlaut.app.design.AppBar
 import de.lautstark.vorlaut.app.design.Btn
 import de.lautstark.vorlaut.app.design.BtnTier
+import de.lautstark.vorlaut.app.design.ConfirmDestructive
 import de.lautstark.vorlaut.app.design.EmptyState
 import de.lautstark.vorlaut.app.design.Flag
+import de.lautstark.vorlaut.app.design.MenuItem
 import de.lautstark.vorlaut.app.design.Notice
+import de.lautstark.vorlaut.app.design.OverflowMenu
 import de.lautstark.vorlaut.app.design.Txt
 import de.lautstark.vorlaut.app.design.Vorlaut
 
@@ -53,6 +58,7 @@ fun SammlungenScreen(
     onAdd: () -> Unit,
     onOpen: (PackageStore.Entry) -> Unit,
     onWarnings: (PackageStore.Entry) -> Unit,
+    onRemove: (PackageStore.Entry) -> Unit,
     onSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -104,7 +110,12 @@ fun SammlungenScreen(
 
             items(state.stored, key = { it.boardPackage.id }) { entry ->
                 Box(Modifier.widthIn(max = 860.dp)) {
-                    SammlungRow(entry, onOpen = { onOpen(entry) }, onWarnings = { onWarnings(entry) })
+                    SammlungRow(
+                        entry,
+                        onOpen = { onOpen(entry) },
+                        onWarnings = { onWarnings(entry) },
+                        onRemove = { onRemove(entry) },
+                    )
                 }
             }
 
@@ -152,7 +163,10 @@ private fun SammlungRow(
     entry: PackageStore.Entry,
     onOpen: () -> Unit,
     onWarnings: () -> Unit,
+    onRemove: () -> Unit,
 ) {
+    var menuOpen by remember { mutableStateOf(false) }
+    var confirming by remember { mutableStateOf(false) }
     val c = Vorlaut.colors
     val pkg = entry.boardPackage
     val boards = pkg.boards.size
@@ -203,12 +217,44 @@ private fun SammlungRow(
                 Flag(pluralStringResource(R.plurals.warnings_count, entry.warnings.size, entry.warnings.size))
             }
         }
-        Box(
-            Modifier
-                .clip(RoundedCornerShape(999.dp))
-                .clickable { onWarnings() }
-                .padding(horizontal = 11.dp, vertical = 8.dp),
-        ) { Txt("⋯", style = Vorlaut.type.rowName, color = c.textDim) }
+        Box {
+            Box(
+                Modifier
+                    .clip(RoundedCornerShape(999.dp))
+                    .clickable { menuOpen = true }
+                    .padding(horizontal = 11.dp, vertical = 8.dp),
+            ) { Txt("⋯", style = Vorlaut.type.rowName, color = c.textDim) }
+
+            OverflowMenu(expanded = menuOpen, onDismiss = { menuOpen = false }) {
+                MenuItem(stringResource(R.string.menu_open)) {
+                    menuOpen = false
+                    onOpen()
+                }
+                MenuItem(stringResource(R.string.menu_warnings)) {
+                    menuOpen = false
+                    onWarnings()
+                }
+                // Destructive last, and the only coloured row in the menu.
+                MenuItem(stringResource(R.string.menu_remove), destructive = true) {
+                    menuOpen = false
+                    confirming = true
+                }
+            }
+        }
+    }
+
+    if (confirming) {
+        ConfirmDestructive(
+            title = stringResource(R.string.remove_title, entry.boardPackage.name),
+            body = stringResource(R.string.remove_body),
+            confirmLabel = stringResource(R.string.remove_confirm),
+            cancelLabel = stringResource(R.string.cancel),
+            onConfirm = {
+                confirming = false
+                onRemove()
+            },
+            onDismiss = { confirming = false },
+        )
     }
 }
 
@@ -219,6 +265,22 @@ private fun SammlungRow(
  * Sammlung is a set of pictures and a row of names tells an adult less than a
  * row of pictures does, but neither is worth a stutter on the list.
  */
+@Composable
+private fun RemoveConfirmation(
+    name: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    ConfirmDestructive(
+        title = stringResource(R.string.remove_title, name),
+        body = stringResource(R.string.remove_body),
+        confirmLabel = stringResource(R.string.remove_confirm),
+        cancelLabel = stringResource(R.string.cancel),
+        onConfirm = onConfirm,
+        onDismiss = onDismiss,
+    )
+}
+
 @Composable
 private fun rememberFace(entry: PackageStore.Entry): androidx.compose.ui.graphics.ImageBitmap? {
     var face by androidx.compose.runtime.remember(entry.boardPackage.id) {

@@ -87,4 +87,10 @@
     <string name="pinning_off">Ausgeschaltet. Die Home- und Übersichtstaste verlassen die Tafel weiterhin — das kann nur in Androids Einstellungen geändert werden, nicht hier.</string>
     <string name="pin_remove_title">PIN entfernen</string>
     <string name="pin_remove_body">Gib die aktuelle PIN ein. Danach lässt sich die Tafel ohne PIN verlassen.</string>
+    <string name="menu_open">Öffnen</string>
+    <string name="menu_warnings">Warnungen</string>
+    <string name="menu_remove">Entfernen</string>
+    <string name="remove_title">„%1$s“ entfernen</string>
+    <string name="remove_body">Die Sammlung wird von diesem Gerät gelöscht — alle Tafeln, Bilder und Aufnahmen darin. Die Datei, aus der sie kam, bleibt unberührt.</string>
+    <string name="remove_confirm">Entfernen</string>
 </resources>
