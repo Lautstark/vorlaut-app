@@ -204,6 +204,27 @@ jobs:
           fi
           "$apksigner" verify --verbose --print-certs "$apk"
 
+          # Signed is necessary but not sufficient: signed with *the same key as
+          # last time* is the property that matters. A device accepts an update
+          # only from the key that installed the app and refuses any other one
+          # outright, so a swapped keystore does not degrade anything - it strands
+          # everyone who already has the app on an install they cannot update and
+          # can only replace, losing its data. Nothing about such a build looks
+          # wrong: it compiles, it signs, it verifies. The pin is what tells the
+          # two apart, and it is checked here, before anything is published.
+          expected="$(sed -n 's/^release\.certificateSha256=//p' gradle.properties | tr -d ' \r' | tr '[:upper:]' '[:lower:]' | tr -d ':')"
+          actual="$("$apksigner" verify --print-certs "$apk" | sed -n 's/.*certificate SHA-256 digest: *//p' | head -n 1 | tr -d ' \r' | tr '[:upper:]' '[:lower:]' | tr -d ':')"
+
+          if [ -z "$expected" ]; then
+            echo "::error::release.certificateSha256 is unset in gradle.properties, so there is nothing to check this key against. This APK was signed with $actual - if that is the release key, put it there and tag again. See docs/releasing.md."
+            exit 1
+          fi
+          if [ "$expected" != "$actual" ]; then
+            echo "::error::Wrong signing key. gradle.properties pins $expected, this APK is signed with $actual. Publishing it would strand every device that already has the app on an update it must refuse. Either the RELEASE_KEYSTORE_BASE64 secret is not the release keystore, or the key changed deliberately - see docs/releasing.md before touching the pin."
+            exit 1
+          fi
+          echo "Signing key matches the pin ($expected)."
+
       - name: Name the artifact after its version
         id: artifact
         run: |

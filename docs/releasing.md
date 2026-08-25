@@ -56,6 +56,49 @@ rather than guessing a version. There is no pre-release channel: if one is wante
 it is a `--prerelease` flag on the `gh release create` call and a looser tag
 pattern, both deliberate additions.
 
+## The key must never change
+
+An Android app's identity is its signing key. A device accepts an update only
+from the key that installed the app, and refuses anything else outright rather
+than warning — so a release signed with a different key does not degrade, it
+strands everyone who already has the app on an install they cannot update and can
+only uninstall and replace, losing its data. On a tablet a child depends on, that
+is not a small thing.
+
+There is no recovery. Play App Signing can re-issue a lost upload key; this
+project has no store listing and does not use it, so the keystore is the key.
+Signature scheme v3 can rotate a key, but rotation must be signed by the old key,
+so it retires a key and never replaces a lost one — and `minSdk` is 26 while
+rotation is honoured only from 28.
+
+So the fingerprint is pinned in [`gradle.properties`](../gradle.properties), and
+the release job checks the APK against it before publishing:
+
+```properties
+release.certificateSha256=
+```
+
+Nothing about a wrong-key build looks wrong — it compiles, it signs, it verifies.
+The pin is the only thing that can tell it from a right one. While it is empty the
+release fails and prints the digest of whatever it just signed, so the first
+release says what to paste here; it does not skip, for the reason
+[`docs/exchange-pin.md`](exchange-pin.md) gives about the other pin in this file.
+
+Read it off the keystore with:
+
+```bash
+keytool -list -v -keystore vorlaut-release.jks -alias vorlaut | grep SHA256
+```
+
+Paste it in either form — `keytool` prints uppercase with colons and `apksigner`
+prints lowercase without, and the check normalises both rather than failing on
+formatting. The fingerprint is not a secret: it is printed in the log of every
+release by design, which is what makes the run a record of the key it went out
+under.
+
+Changing this value is changing which key ships. It is a deliberate act with the
+consequences above attached, never a fix for a failing release.
+
 ## The signing key
 
 Release signing is configured entirely from outside the tree. Four values, all or
@@ -78,13 +121,16 @@ keytool -genkeypair -v -keystore vorlaut-release.jks -alias vorlaut \
   -keyalg RSA -keysize 4096 -validity 10000
 ```
 
-**Back it up somewhere durable and offline.** An Android app is identified by its
-signing key: lose it and this `applicationId` can never be updated again on any
-device that has it installed, only uninstalled and replaced. There is no recovery
-path outside Play App Signing, which this project does not use.
+**Back it up before doing anything else with it**, into a password manager or
+another durable store that is not this machine: the `.jks` file itself as an
+attachment, and the store password, key password and alias beside it. The file is
+the part that cannot be regenerated — a password without it is worth nothing. See
+above for what losing it costs.
 
-Never commit it. `.gitignore` refuses `*.jks`, `*.keystore` and
-`keystore.properties`, but that is a backstop, not the rule.
+Keep it outside the repository, somewhere like `~/keys`. `.gitignore` refuses
+`*.jks`, `*.keystore` and `keystore.properties`, but that is a backstop against a
+mistake, not a reason to keep a signing key in a directory that gets committed,
+archived and copied.
 
 ### Putting it into GitHub
 
