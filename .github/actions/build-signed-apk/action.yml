@@ -1,0 +1,131 @@
+name: Build a signed APK
+description: >
+  Builds :app:assembleRelease with the release keystore, and refuses to hand back
+  an APK that is not signed by the key this repository pins.
+
+# Two jobs need a signed APK - the release a tag publishes, and the snapshot every
+# push to main leaves behind - and both must be signed by the same key as every
+# release before them. That check existing twice is how it ends up existing in one
+# and a half versions, so it lives here and neither job carries a copy.
+#
+# A local composite action rather than a reusable workflow: this is a sequence of
+# steps inside one job, not a job of its own, and it stays in this repository so
+# the job holding the signing key still runs no third-party code.
+
+inputs:
+  version-name:
+    description: The versionName to build, without a leading v.
+    required: true
+  version-code:
+    description: The versionCode to build.
+    required: true
+  keystore-base64:
+    description: The release keystore, base64-encoded.
+    required: true
+  keystore-password:
+    description: Password for the keystore.
+    required: true
+  key-alias:
+    description: Alias of the signing key inside the keystore.
+    required: true
+  key-password:
+    description: Password for the signing key.
+    required: true
+
+outputs:
+  apk:
+    description: Path to the verified, signed APK.
+    value: ${{ steps.build.outputs.apk }}
+  certificate:
+    description: SHA-256 fingerprint of the certificate it was signed with.
+    value: ${{ steps.verify.outputs.certificate }}
+
+runs:
+  using: composite
+  steps:
+    - name: Restore signing keystore
+      shell: bash
+      env:
+        KEYSTORE_BASE64: ${{ inputs.keystore-base64 }}
+      run: |
+        set -euo pipefail
+        if [ -z "${KEYSTORE_BASE64:-}" ]; then
+          echo "::error::The RELEASE_KEYSTORE_BASE64 secret is unset, so this build could only be unsigned. See docs/releasing.md."
+          exit 1
+        fi
+        # Whitespace is stripped before decoding. Different base64 tools wrap their
+        # output at different widths and a pasted secret can pick up a stray
+        # newline, which would arrive here as a keystore that is merely corrupt -
+        # the least legible way for this to fail.
+        printf '%s' "$KEYSTORE_BASE64" | tr -d '[:space:]' | base64 -d > "$RUNNER_TEMP/release.jks"
+        if [ ! -s "$RUNNER_TEMP/release.jks" ]; then
+          echo "::error::RELEASE_KEYSTORE_BASE64 did not decode to anything. Re-encode the keystore and set the secret again; see docs/releasing.md."
+          exit 1
+        fi
+
+    - name: Assemble signed release APK
+      id: build
+      shell: bash
+      env:
+        RELEASE_KEYSTORE: ${{ runner.temp }}/release.jks
+        RELEASE_KEYSTORE_PASSWORD: ${{ inputs.keystore-password }}
+        RELEASE_KEY_ALIAS: ${{ inputs.key-alias }}
+        RELEASE_KEY_PASSWORD: ${{ inputs.key-password }}
+      run: |
+        set -euo pipefail
+        ./gradlew :app:assembleRelease \
+          -Prelease.versionCode='${{ inputs.version-code }}' \
+          -Prelease.versionName='${{ inputs.version-name }}'
+        echo "apk=app/build/outputs/apk/release/app-release.apk" >> "$GITHUB_OUTPUT"
+
+    # The build is not asked whether it signed the APK - the APK is. A missing or
+    # wrong secret, a bad alias and a corrupt keystore all end in the same place,
+    # an artifact that installs nowhere, and only the artifact itself can rule all
+    # of them out.
+    #
+    # An unsigned build does not merely fail this check, it never reaches it: AGP
+    # writes app-release-unsigned.apk under that name instead, so the path is
+    # absent. Both endings stop the job, and the explicit test is here so the log
+    # says which one happened.
+    #
+    # Then the key itself. Signed is necessary but not sufficient - signed with the
+    # same key as last time is the property that matters. A device accepts an
+    # update only from the key that installed the app and refuses any other one
+    # outright, so a swapped keystore does not degrade anything, it strands
+    # everyone who already has the app on an install they cannot update and can
+    # only replace, losing its data. Nothing about such a build looks wrong: it
+    # compiles, it signs, it verifies. The pin is what tells the two apart.
+    - name: Verify it is signed, and by the pinned key
+      id: verify
+      shell: bash
+      run: |
+        set -euo pipefail
+        apk='${{ steps.build.outputs.apk }}'
+        if [ ! -f "$apk" ]; then
+          echo "::error::No $apk. The build produced $(ls app/build/outputs/apk/release/*.apk 2>/dev/null || echo 'no APK at all'), which means it did not sign anything. Check the signing secrets against docs/releasing.md."
+          exit 1
+        fi
+
+        sdk="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+        apksigner="$(find "$sdk/build-tools" -name apksigner 2>/dev/null | sort -V | tail -n 1 || true)"
+        if [ -z "$apksigner" ]; then
+          echo "::error::No apksigner found under '$sdk/build-tools', so the signature cannot be verified. Refusing to hand back an APK nobody has checked."
+          exit 1
+        fi
+
+        "$apksigner" verify --verbose --print-certs "$apk"
+
+        normalise() { tr -d ' \r' | tr '[:upper:]' '[:lower:]' | tr -d ':'; }
+        expected="$(sed -n 's/^release\.certificateSha256=//p' gradle.properties | normalise)"
+        actual="$("$apksigner" verify --print-certs "$apk" | sed -n 's/.*certificate SHA-256 digest: *//p' | head -n 1 | normalise)"
+
+        if [ -z "$expected" ]; then
+          echo "::error::release.certificateSha256 is unset in gradle.properties, so there is nothing to check this key against. This APK was signed with $actual - if that is the release key, put it there and try again. See docs/releasing.md."
+          exit 1
+        fi
+        if [ "$expected" != "$actual" ]; then
+          echo "::error::Wrong signing key. gradle.properties pins $expected, this APK is signed with $actual. Shipping it would strand every device that already has the app on an update it must refuse. Either the RELEASE_KEYSTORE_BASE64 secret is not the release keystore, or the key changed deliberately - see docs/releasing.md before touching the pin."
+          exit 1
+        fi
+        echo "Signing key matches the pin ($expected)."
+        echo "certificate=$actual" >> "$GITHUB_OUTPUT"
