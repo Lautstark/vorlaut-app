@@ -31,6 +31,19 @@ class ImportViewModel(
         }
     }
 
+    /**
+     * Forgets a Sammlung. The board is closed first if it is the open one —
+     * rendering a package whose files have gone is a crash waiting for the next
+     * symbol to be drawn.
+     */
+    fun remove(id: String) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { store.remove(id) }
+            _state.value = _state.value.copy(lastOutcome = null, readError = null)
+            refresh()
+        }
+    }
+
     fun importFrom(uri: Uri) {
         _state.value = _state.value.copy(busy = true, lastOutcome = null, readError = null)
         viewModelScope.launch {

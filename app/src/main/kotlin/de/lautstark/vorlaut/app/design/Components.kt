@@ -6,12 +6,15 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -19,8 +22,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 
 /*
  * The family's components, as Compose.
@@ -199,5 +207,112 @@ fun AppBar(
         }
         Box(Modifier.weight(1f))
         trailing()
+    }
+}
+
+/**
+ * The overflow menu.
+ *
+ * A row shows its content and one `⋯`; everything you can *do* to it lives
+ * behind that one trigger, so a row never grows a new control each time the
+ * product grows a feature (design.md §4.3). Anchored under its trigger with a
+ * 6dp gap and right-aligned to it, on a `--surface` plane.
+ *
+ * Destructive items sit last and are the only coloured thing in it. Nothing is
+ * hidden behind hover — this is a touch screen and there is no hover to hide
+ * behind.
+ */
+@Composable
+fun OverflowMenu(
+    expanded: Boolean,
+    onDismiss: () -> Unit,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val c = Vorlaut.colors
+    if (!expanded) return
+    Popup(
+        alignment = Alignment.TopEnd,
+        offset = IntOffset(0, with(LocalDensity.current) { 6.dp.roundToPx() }),
+        onDismissRequest = onDismiss,
+        properties = PopupProperties(focusable = true),
+    ) {
+        Column(
+            // Intrinsic, not fill: inside a Popup the incoming constraint is the
+            // whole window, and the rows fill whatever they are given — without
+            // this the menu spans the screen.
+            Modifier
+                .width(IntrinsicSize.Max)
+                .widthIn(min = 196.dp)
+                .clip(RoundedCornerShape(Vorlaut.metrics.radiusSm))
+                .background(c.surface)
+                .border(1.dp, c.line, RoundedCornerShape(Vorlaut.metrics.radiusSm))
+                .padding(6.dp),
+            content = content,
+        )
+    }
+}
+
+/** One row of an [OverflowMenu]. */
+@Composable
+fun MenuItem(
+    label: String,
+    modifier: Modifier = Modifier,
+    destructive: Boolean = false,
+    onClick: () -> Unit,
+) {
+    val c = Vorlaut.colors
+    Box(
+        modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(Vorlaut.metrics.radiusItem))
+            .clickable { onClick() }
+            .padding(horizontal = 11.dp, vertical = 9.dp),
+    ) {
+        Txt(
+            label,
+            style = Vorlaut.type.sub,
+            color = if (destructive) c.danger else c.text,
+            maxLines = 1,
+        )
+    }
+}
+
+/**
+ * A destructive confirmation.
+ *
+ * It names what is lost and labels the button with the act rather than with
+ * "OK" (design.md §4.3), because "OK" on a dialog somebody half-read is how a
+ * vocabulary disappears.
+ */
+@Composable
+fun ConfirmDestructive(
+    title: String,
+    body: String,
+    confirmLabel: String,
+    cancelLabel: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val c = Vorlaut.colors
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            Modifier
+                .widthIn(max = 460.dp)
+                .clip(RoundedCornerShape(Vorlaut.metrics.radius))
+                .background(c.surface)
+                .border(1.dp, c.line, RoundedCornerShape(Vorlaut.metrics.radius))
+                .padding(22.dp),
+        ) {
+            Txt(title, style = Vorlaut.type.rowName, color = c.text)
+            Txt(body, style = Vorlaut.type.sub, color = c.textDim, modifier = Modifier.padding(top = 8.dp))
+            Row(
+                Modifier.fillMaxWidth().padding(top = 18.dp),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                Btn(cancelLabel, onDismiss, tier = BtnTier.Quiet)
+                Box(Modifier.width(9.dp))
+                Btn(confirmLabel, onConfirm, tier = BtnTier.Normal, destructive = true)
+            }
+        }
     }
 }

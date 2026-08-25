@@ -134,6 +134,22 @@ class PackageStore(
         if (hadPrevious) displaced.deleteRecursively()
     }
 
+    /**
+     * Forgets a Sammlung entirely.
+     *
+     * Moved aside first and deleted after, the same way [commit] replaces one:
+     * a half-deleted directory would be read back on the next listing as a
+     * package with no archive in it. There is no undo and the caller is
+     * expected to have asked.
+     */
+    fun remove(id: String) {
+        val directory = File(packagesDir, directoryNameFor(id))
+        if (!directory.exists()) return
+        stagingDir.mkdirs()
+        val condemned = File(stagingDir, "${directory.name}-removed-${System.nanoTime()}")
+        if (directory.renameTo(condemned)) condemned.deleteRecursively() else directory.deleteRecursively()
+    }
+
     private fun archiveFor(id: String) = File(File(packagesDir, directoryNameFor(id)), ARCHIVE_NAME)
 
     /**
