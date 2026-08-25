@@ -20,16 +20,31 @@ deliberate change with a test run attached, never a routine bump.
 ## Current state
 
 ```properties
-exchange.sha=98209c1815891cf61e86a8e1833403c7de3761dd
+exchange.sha=941245935c110a6b1d6f06067c0caaed352dfb5a
 ```
 
 That commit carries `SPEC.md` 1.1.0 and fourteen fixtures, all of which pass.
 
-Moved from `5ffeb57` (1.0.0, thirteen fixtures) for
+Moved from `98209c1` — also 1.1.0, also fourteen — for one fixture. `unknown-ext`
+lost `ext_vorlaut_active` from its board and gained `ext_vorlaut_color` in its
+place: the talker deleted the `active` field along with the active/inactive
+distinction it expressed, so the fixture had been holding this importer against a
+field no builder writes any more.
+
+**No rule moved with it.** `SPEC.md` is untouched, there is no version bump, and
+an importer passing at the old pin passes at this one — `ext_vorlaut_active` was
+never named in the spec, only in a fixture. What the new shape adds is a trap the
+old one could not spring: the board carries `ext_vorlaut_color` and
+`ext_lautstark_board_color` at once, holding **different** colours, so an importer
+reading the talker's namespace instead of ours answers `#FF6B35` and fails rather
+than passing because the two happened to agree. `BoardPackageImporter` reads only
+`ext_lautstark_board_color`, which is why this one was green on the first run.
+
+Before that, `5ffeb57` (1.0.0, thirteen fixtures), moved for
 `ext_lautstark_first_column_gap` — SPEC.md §4.1's layout hint and the
 `first-column-gap` fixture that comes with it. A minor bump, so the importer at
-the old pin would have kept passing; what it would not have done is read the
-field, and the fixture asserting the default is the one that says so.
+that pin would have kept passing; what it would not have done is read the field,
+and the fixture asserting the default is the one that says so.
 
 No `exchange-v1.1.0` tag is cut and none will be until a real board round-trips
 to a tablet, so a commit SHA is the pin. The spec is still a draft and the
