@@ -165,7 +165,15 @@ jobs:
             echo "::error::The RELEASE_KEYSTORE_BASE64 secret is unset, so this release could only be unsigned. See docs/releasing.md."
             exit 1
           fi
-          printf '%s' "$RELEASE_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          # Whitespace is stripped before decoding. Different base64 tools wrap
+          # their output at different widths and a pasted secret can pick up a
+          # stray newline, which would arrive here as a keystore that is merely
+          # corrupt - the least legible way for this to fail.
+          printf '%s' "$RELEASE_KEYSTORE_BASE64" | tr -d '[:space:]' | base64 -d > "$RUNNER_TEMP/release.jks"
+          if [ ! -s "$RUNNER_TEMP/release.jks" ]; then
+            echo "::error::RELEASE_KEYSTORE_BASE64 did not decode to anything. Re-encode the keystore and set the secret again; see docs/releasing.md."
+            exit 1
+          fi
 
       - name: Assemble signed release APK
         env:
