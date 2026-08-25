@@ -36,6 +36,21 @@ data class BoardPackage(
     val symbolSource: SymbolSource,
     val redistributable: Boolean,
     val ttsVoice: String?,
+    /**
+     * SPEC.md 4.1: draw extra space between the first column and the second, on
+     * every board in this package.
+     *
+     * A hint about drawing and nothing else. It marks the leftmost column as the
+     * one that stays reachable — MetaTalk sets that column apart for exactly that
+     * reason — but nothing here makes a button persistent, and no field does: a
+     * column that stays put is one the builder wrote onto every board. Reading
+     * this as an instruction to carry column 1 over from the previous board would
+     * render a package that repeats it correctly and one that does not wrongly.
+     *
+     * False when the manifest says nothing, which is the case for every package
+     * written against 1.0.0.
+     */
+    val firstColumnGap: Boolean,
     val specVersion: SpecVersion,
     val rootBoardId: String,
     val boards: List<Board>,
@@ -67,7 +82,7 @@ data class SpecVersion(
 
     companion object {
         /** The version this importer implements. */
-        val IMPLEMENTED = SpecVersion(1, 0, 0)
+        val IMPLEMENTED = SpecVersion(1, 1, 0)
 
         fun parse(value: String): SpecVersion? {
             val parts = value.split('.')

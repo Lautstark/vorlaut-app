@@ -213,6 +213,17 @@ data class BoardUiState(
 
     fun isPlayingClip(button: Button): Boolean = (speaking as? Speech.Speaking.Clip)?.buttonId == button.id
 
+    /**
+     * SPEC.md 4.1: whether this package asks for the first column to be set apart.
+     *
+     * A property of the package rather than of the board on screen, and drawn on
+     * every one of its boards. A gap that came and went from page to page would
+     * move every other column as the user navigated, which is the opposite of
+     * what a column that stays reachable is for.
+     */
+    val firstColumnGap: Boolean
+        get() = boardPackage?.firstColumnGap == true
+
     /** Buttons the importer marked. Kept as a set so the grid can ask cheaply. */
     val degraded: Set<String>
         get() =
