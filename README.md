@@ -90,6 +90,18 @@ checkout instead. This is for local work only and is not a pin:
 ./gradlew build -Pexchange.localPath=$HOME/Code/vorlaut/exchange
 ```
 
+## Releasing
+
+Push a `vMAJOR.MINOR.PATCH` tag. CI runs the suites first and, only if they pass,
+builds a signed APK and attaches it to a GitHub Release — the version comes from
+the tag, and nothing in the tree needs bumping. See
+[`docs/releasing.md`](docs/releasing.md), which is also where the signing key and
+its secrets are described.
+
+```bash
+git tag v0.2.0 && git push origin v0.2.0
+```
+
 ## Licence
 
 MIT. See [`LICENSE`](LICENSE).
