@@ -5,7 +5,6 @@
     <string name="add_collection">Add a collection</string>
     <string name="settings">Settings</string>
     <string name="back">Back</string>
-    <string name="hand_over">Hand over</string>
 
     <string name="empty_headline">No collection on this device yet.</string>
     <string name="empty_body">A collection arrives as an .obz file from the editor. Open it from your files, share it to this app, or fetch it below.</string>
@@ -46,7 +45,6 @@
     <string name="pin_wrong">That is not the PIN.</string>
     <string name="cancel">Cancel</string>
 
-    <string name="pinning_off">The PIN is set, but Android\'s app pinning is switched off — Home and Overview still leave this board.</string>
     <string name="open_security_settings">Open Android\'s security settings</string>
     <string name="w_image_missing">A picture is missing. The button shows its label only.</string>
     <string name="w_image_oversized">A picture is too large to show, so the button has none.</string>
@@ -60,4 +58,15 @@
     <string name="w_path_conflict">The collection disagrees with itself about where a file lives.</string>
     <string name="w_image_reference_ignored">A picture also pointed somewhere online. The one in the collection was used.</string>
     <string name="w_color_unparseable">A colour could not be read, so the standard one was used.</string>
+    <string name="pin_setting_title">A PIN for the way out of the board</string>
+    <string name="pin_setting_on">A PIN is set. Leaving the board asks for it.</string>
+    <string name="pin_setting_off">No PIN set. The board can be left by holding the handle.</string>
+    <string name="pin_set_up">Set up a PIN</string>
+    <string name="pin_change">Change the PIN</string>
+    <string name="pin_remove">Remove the PIN</string>
+    <string name="pinning_setting_title">Android\'s app pinning</string>
+    <string name="pinning_on">On. Home and Overview will not leave the board.</string>
+    <string name="pinning_off">Off. Home and Overview still leave the board — that can only be changed in Android\'s settings, not here.</string>
+    <string name="pin_remove_title">Remove the PIN</string>
+    <string name="pin_remove_body">Enter the current PIN. After that the board can be left without one.</string>
 </resources>

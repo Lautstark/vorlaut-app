@@ -53,10 +53,7 @@ fun SammlungenScreen(
     onAdd: () -> Unit,
     onOpen: (PackageStore.Entry) -> Unit,
     onWarnings: (PackageStore.Entry) -> Unit,
-    onHandOver: () -> Unit,
-    handedOver: Boolean,
-    pinningUnavailable: Boolean,
-    onFixPinning: () -> Unit,
+    onSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val c = Vorlaut.colors
@@ -93,18 +90,6 @@ fun SammlungenScreen(
                     }
                 }
             }
-            if (handedOver && pinningUnavailable) {
-                item {
-                    Column(Modifier.widthIn(max = 860.dp)) {
-                        Notice(stringResource(R.string.pinning_off), bad = true)
-                        Box(Modifier.padding(top = 8.dp)) {
-                            Btn(stringResource(R.string.open_security_settings), onFixPinning, tier = BtnTier.Quiet)
-                        }
-                        Gap()
-                    }
-                }
-            }
-
             if (state.stored.isEmpty() && !state.busy) {
                 item {
                     Column(Modifier.widthIn(max = 860.dp)) {
@@ -128,18 +113,28 @@ fun SammlungenScreen(
                     Modifier.widthIn(max = 860.dp).fillMaxWidth().padding(top = 10.dp, bottom = 24.dp),
                     horizontalArrangement = Arrangement.End,
                 ) {
-                    if (state.stored.isNotEmpty() && !handedOver) {
-                        Btn(stringResource(R.string.hand_over), onHandOver, tier = BtnTier.Normal)
-                        Box(Modifier.size(10.dp))
-                    }
                     Btn(stringResource(R.string.add_collection), onAdd, tier = BtnTier.Primary)
                 }
             }
         }
 
         // Einstellungen at the foot, where the family keeps it (design.md §3.6).
-        Box(Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
-            Txt(stringResource(R.string.settings), style = Vorlaut.type.sub, color = c.textDim)
+        // It was this same line of text for a while with nothing behind it —
+        // the convention put the word there and the screen was never built.
+        Box(
+            Modifier.fillMaxWidth().padding(vertical = 16.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Txt(
+                stringResource(R.string.settings),
+                style = Vorlaut.type.sub,
+                color = c.textDim,
+                modifier =
+                    Modifier
+                        .clip(RoundedCornerShape(Vorlaut.metrics.radiusSm))
+                        .clickable { onSettings() }
+                        .padding(horizontal = 14.dp, vertical = 6.dp),
+            )
         }
     }
 }

@@ -40,6 +40,8 @@ private sealed interface Route {
     data class Warnings(
         val packageId: String,
     ) : Route
+
+    data object Settings : Route
 }
 
 class MainActivity : ComponentActivity() {
@@ -52,8 +54,7 @@ class MainActivity : ComponentActivity() {
             val boardState by boardModel.state.collectAsState()
 
             val handover = remember { Handover(applicationContext) }
-            var handedOver by remember { mutableStateOf(handover.isHandedOver) }
-            var pinned by remember { mutableStateOf(handover.isPinnedToScreen()) }
+            var pinIsSet by remember { mutableStateOf(handover.isPinSet) }
             var prompt by remember { mutableStateOf<PinPurpose?>(null) }
             var pinBusy by remember { mutableStateOf(false) }
             var pinWrong by remember { mutableStateOf(false) }
@@ -84,8 +85,25 @@ class MainActivity : ComponentActivity() {
                 opened = true
             }
 
+            // The board is left by holding the handle. If a PIN exists it is
+            // asked for; if it does not, leaving simply happens. There is no
+            // mode in between, because a tablet in a child's hands has no
+            // opposite state to be in.
             fun leaveBoard() {
-                if (handedOver) prompt = PinPurpose.Unlock else route = Route.Sammlungen
+                if (pinIsSet) prompt = PinPurpose.Unlock else route = Route.Sammlungen
+            }
+
+            // Android's pinning follows the board rather than a mode: asked
+            // for on arrival, released on the way out. It is best-effort and
+            // usually refused — pinning is off on most tablets and no app can
+            // turn it on — so nothing here depends on it working. Settings says
+            // plainly whether it is in force; this just asks.
+            LaunchedEffect(route) {
+                if (route == Route.Board) {
+                    handover.pinToScreen(this@MainActivity)
+                } else {
+                    handover.releaseScreen(this@MainActivity)
+                }
             }
 
             VorlautTheme {
@@ -104,7 +122,6 @@ class MainActivity : ComponentActivity() {
                                 onUndo = boardModel::undo,
                                 onClear = boardModel::clearBar,
                                 onLeave = ::leaveBoard,
-                                handedOver = handedOver,
                             )
                         }
 
@@ -118,24 +135,7 @@ class MainActivity : ComponentActivity() {
                                     route = Route.Board
                                 },
                                 onWarnings = { route = Route.Warnings(it.boardPackage.id) },
-                                onHandOver = {
-                                    if (handover.isPinSet) {
-                                        handover.pinToScreen(this@MainActivity)
-                                        pinned = handover.isPinnedToScreen()
-                                        handedOver = true
-                                        handover.isHandedOver = true
-                                        route = Route.Board
-                                    } else {
-                                        prompt = PinPurpose.Choose
-                                    }
-                                },
-                                handedOver = handedOver,
-                                pinningUnavailable = !pinned,
-                                onFixPinning = {
-                                    runCatching {
-                                        startActivity(Intent(android.provider.Settings.ACTION_SECURITY_SETTINGS))
-                                    }
-                                },
+                                onSettings = { route = Route.Settings },
                             )
                         }
 
@@ -144,6 +144,21 @@ class MainActivity : ComponentActivity() {
                             WarningsScreen(
                                 packageName = entry?.boardPackage?.name.orEmpty(),
                                 warnings = entry?.warnings.orEmpty(),
+                                onBack = { route = Route.Sammlungen },
+                            )
+                        }
+
+                        Route.Settings -> {
+                            SettingsScreen(
+                                pinIsSet = pinIsSet,
+                                pinningAvailable = handover.isPinningAllowedBySystem(),
+                                onSetPin = { prompt = PinPurpose.Choose },
+                                onRemovePin = { prompt = PinPurpose.Remove },
+                                onFixPinning = {
+                                    runCatching {
+                                        startActivity(Intent(android.provider.Settings.ACTION_SECURITY_SETTINGS))
+                                    }
+                                },
                                 onBack = { route = Route.Sammlungen },
                             )
                         }
@@ -166,12 +181,8 @@ class MainActivity : ComponentActivity() {
                                         PinPurpose.Choose -> {
                                             if (PinHash.isAcceptable(entered)) {
                                                 handover.setPin(entered)
-                                                handover.pinToScreen(this@MainActivity)
-                                                pinned = handover.isPinnedToScreen()
-                                                handedOver = true
-                                                handover.isHandedOver = true
+                                                pinIsSet = true
                                                 prompt = null
-                                                route = Route.Board
                                             } else {
                                                 pinWrong = true
                                             }
@@ -180,11 +191,18 @@ class MainActivity : ComponentActivity() {
                                         PinPurpose.Unlock -> {
                                             if (handover.verify(entered)) {
                                                 handover.releaseScreen(this@MainActivity)
-                                                pinned = false
-                                                handedOver = false
-                                                handover.isHandedOver = false
                                                 prompt = null
                                                 route = Route.Sammlungen
+                                            } else {
+                                                pinWrong = true
+                                            }
+                                        }
+
+                                        PinPurpose.Remove -> {
+                                            if (handover.verify(entered)) {
+                                                handover.removePin()
+                                                pinIsSet = false
+                                                prompt = null
                                             } else {
                                                 pinWrong = true
                                             }
