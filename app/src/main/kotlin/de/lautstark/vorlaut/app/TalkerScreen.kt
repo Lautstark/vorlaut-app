@@ -75,7 +75,9 @@ private val HOLD_MILLIS = 1200L
  * is what the screen is for. At 418dp they take 45%, and four tiles fit at the
  * same size rather than being shrunk to make room.
  *
- * [SCREEN_MARGIN] is larger than [Vorlaut.metrics.gap] on purpose, and so is
+ * The screen's edge is [Vorlaut.metrics.screenMargin] — the same number the
+ * list screens hold off by, so the board does not read as a different
+ * application — and it is larger than [Vorlaut.metrics.gap], as is
  * [BAR_TO_GRID]. The rule that every gutter is one number was about the gutters
  * *inside* the grid — the build before this one set a padding on the grid and
  * another inside each cell, so the outer columns silently carried both. Giving
@@ -83,7 +85,6 @@ private val HOLD_MILLIS = 1200L
  * values is not that mistake; every cell-to-cell gap is still identical, and so
  * is every edge.
  */
-private val SCREEN_MARGIN = 16.dp
 private val BAR_TO_GRID = 22.dp
 private val ARROW_WIDTH = 48.dp
 private val SPEAK_WIDTH = 112.dp
@@ -122,7 +123,7 @@ fun TalkerScreen(
             // row is half under the clock is a talker with a row of unreachable
             // buttons.
             .windowInsetsPadding(WindowInsets.safeDrawing)
-            .padding(SCREEN_MARGIN),
+            .padding(Vorlaut.metrics.screenMargin),
         verticalArrangement = Arrangement.spacedBy(BAR_TO_GRID),
     ) {
         SentenceBar(
@@ -249,7 +250,8 @@ private fun BarEntry(
     entry: MessageBar.Entry,
     media: BoardMedia,
 ) {
-    val tint = parseHex(entry.tint) ?: Vorlaut.colors.surface2
+    val given = parseHex(entry.tint)
+    val tint = given ?: Vorlaut.colors.surface2
     val bmp = media.image(entry.imagePath, 192)
     Column(
         Modifier
@@ -278,7 +280,7 @@ private fun BarEntry(
             Txt(
                 it,
                 style = Vorlaut.type.small.copy(fontSize = 13.sp, fontWeight = FontWeight.SemiBold),
-                color = Color(0xFF1A1A1D),
+                color = inkOn(given),
                 maxLines = 1,
                 align = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth().padding(top = 2.dp),

@@ -77,12 +77,11 @@ fun SammlungenScreen(
             Modifier.weight(1f).fillMaxWidth(),
             contentPadding =
                 androidx.compose.foundation.layout
-                    .PaddingValues(horizontal = 28.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
+                    .PaddingValues(horizontal = Vorlaut.metrics.screenMargin),
         ) {
             state.readError?.let { message ->
                 item {
-                    Column(Modifier.widthIn(max = 860.dp)) {
+                    Column(Modifier.fillMaxWidth()) {
                         Notice(message, bad = true)
                         Gap()
                     }
@@ -90,7 +89,7 @@ fun SammlungenScreen(
             }
             state.lastOutcome?.let { outcome ->
                 item {
-                    Column(Modifier.widthIn(max = 860.dp)) {
+                    Column(Modifier.fillMaxWidth()) {
                         Notice(outcomeText(outcome), bad = outcome is PackageStore.Outcome.Refused)
                         Gap()
                     }
@@ -98,7 +97,7 @@ fun SammlungenScreen(
             }
             if (state.stored.isEmpty() && !state.busy) {
                 item {
-                    Column(Modifier.widthIn(max = 860.dp)) {
+                    Column(Modifier.fillMaxWidth()) {
                         EmptyState(
                             headline = stringResource(R.string.empty_headline),
                             body = stringResource(R.string.empty_body),
@@ -109,7 +108,7 @@ fun SammlungenScreen(
             }
 
             items(state.stored, key = { it.boardPackage.id }) { entry ->
-                Box(Modifier.widthIn(max = 860.dp)) {
+                Box(Modifier.fillMaxWidth()) {
                     SammlungRow(
                         entry,
                         onOpen = { onOpen(entry) },
@@ -121,7 +120,7 @@ fun SammlungenScreen(
 
             item {
                 Row(
-                    Modifier.widthIn(max = 860.dp).fillMaxWidth().padding(top = 10.dp, bottom = 24.dp),
+                    Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 24.dp),
                     horizontalArrangement = Arrangement.End,
                 ) {
                     Btn(stringResource(R.string.add_collection), onAdd, tier = BtnTier.Primary)

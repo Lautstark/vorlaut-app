@@ -189,7 +189,7 @@ fun AppBar(
 ) {
     val c = Vorlaut.colors
     Row(
-        modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 18.dp),
+        modifier.fillMaxWidth().padding(horizontal = Vorlaut.metrics.screenMargin, vertical = 18.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
