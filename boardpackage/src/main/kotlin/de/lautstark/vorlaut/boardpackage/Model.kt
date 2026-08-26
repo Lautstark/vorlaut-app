@@ -81,8 +81,26 @@ data class SpecVersion(
     override fun toString(): String = "$major.$minor.$patch"
 
     companion object {
-        /** The version this importer implements. */
-        val IMPLEMENTED = SpecVersion(1, 1, 0)
+        /**
+         * The version this importer implements.
+         *
+         * SPEC.md 13 defines what that claim means, and it is not a number
+         * anybody may raise by taste: an importer is conformant at a version
+         * when it produces, for **every** fixture in the pinned index, the
+         * outcome its `.expected.json` states. ConformanceTest is where that is
+         * made good; this constant only reports it. Moving it without the
+         * fixtures moving under it turns a fact into a claim.
+         *
+         * 1.2.0's whole addition is `ext_lautstark_append_on_navigate`
+         * (SPEC.md 4.3, 7.3), which Actions reads and NavigateAndAppendTest
+         * holds against the `navigate-and-append` fixture. See
+         * docs/exchange-pin.md, which moved the pin for exactly that rule.
+         *
+         * Only the *major* half of this is enforced anywhere — SPEC.md 12 makes
+         * a higher minor something an importer MUST accept, so lagging behind
+         * one was never a rejection, only a smaller claim than the truth.
+         */
+        val IMPLEMENTED = SpecVersion(1, 2, 0)
 
         fun parse(value: String): SpecVersion? {
             val parts = value.split('.')
