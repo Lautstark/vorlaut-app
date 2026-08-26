@@ -67,11 +67,11 @@ class BuilderTabletPackageTest {
     @Test
     fun `it says who it is, the way SPEC 3 and 8 require`() {
         val pkg = imported().boardPackage
-        // Higher than the 1.1.0 this importer implements, and accepted on
-        // purpose: SPEC.md 12 says a minor version only adds fields and actions
-        // and that an importer MUST accept a higher one, falling back on 10.3
-        // for what it does not know. The sample is what makes that rule a thing
-        // that happens rather than a thing the spec asserts.
+        // The version the builder targets, and the one this importer implements.
+        // Both sides moved to 1.2.0 for the same field — SPEC.md 4.3's
+        // ext_lautstark_append_on_navigate — so this is the two programs saying
+        // the same number about the same spec rather than either tolerating the
+        // other.
         assertEquals(SpecVersion(1, 2, 0), pkg.specVersion)
         assertTrue("package id is not a uuid: ${pkg.id}", pkg.id.matches(Regex("[0-9a-f-]{36}")))
         assertNotNull(pkg.modified)

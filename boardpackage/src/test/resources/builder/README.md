@@ -47,7 +47,7 @@ Exported from a Sammlung with two sets, made through the page by
 | Pictures | one PNG, 16×16, uploaded rather than picked — so `symbol_source: none` |
 | Recordings | three Ogg Opus clips, from the browser's own WebCodecs encoder |
 | Voice | `de-DE-KatjaNeural`, `locale: de-DE` |
-| Profile | `ext_lautstark_spec_version` 1.2.0, above the 1.1.0 this importer implements — SPEC.md §12 requires accepting a higher minor, and this is where that happens rather than being asserted |
+| Profile | `ext_lautstark_spec_version` 1.2.0 — the version this importer implements too, and the one the pinned fixtures are cut from |
 
 **Cut from vorlaut-diy-talker@4055c1f, 2026-08-26.**
 

@@ -62,11 +62,11 @@ class BuilderPackageTest {
     @Test
     fun `it says who it is, the way SPEC 3 and 8 require`() {
         val pkg = imported().boardPackage
-        // Higher than the 1.1.0 this importer implements. SPEC.md 12 requires a
-        // higher *minor* to be accepted — a minor version only adds fields and
-        // actions, and 10.3 already says what to do with the ones this importer
-        // does not know — so the number moving here is the rule working, not
-        // drift to chase.
+        // The version the builder targets and the one this importer implements,
+        // which is a coincidence worth keeping and not a rule: SPEC.md 12 makes a
+        // higher minor something that must be accepted, and SpecRulesTest is
+        // where that is held. What this line says is only that the sample was cut
+        // from a builder writing the spec the pin carries.
         assertEquals(SpecVersion(1, 2, 0), pkg.specVersion)
         // A UUID, minted with the Sammlung and never re-derived at export time.
         assertTrue("package id is not a uuid: ${pkg.id}", pkg.id.matches(Regex("[0-9a-f-]{36}")))
