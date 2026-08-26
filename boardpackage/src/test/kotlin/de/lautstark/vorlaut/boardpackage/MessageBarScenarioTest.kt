@@ -43,6 +43,26 @@ class MessageBarScenarioTest {
     }
 
     @Test
+    fun `an entry keeps the recording its press came from, or none`() {
+        // The bar has to be able to say a sentence in the package's own voice,
+        // so every entry remembers which clip it arrived on and not only what it
+        // would say without one. This fixture's buttons carry no audio, which is
+        // the half that has to stay null: those words fall to the device voice,
+        // in place, and the sentence does not stop at them.
+        val accepted = BoardPackageImporter.import(Fixtures.readBytes("message-bar.obz")) as ImportResult.Accepted
+        val buttons =
+            accepted.boardPackage.boards
+                .single()
+                .buttons
+                .associateBy { it.id }
+        val bar = MessageBar()
+        bar.press(buttons.getValue("w3"))
+        val entry = bar.contents().single()
+        assertEquals(null, entry.soundPath)
+        assertEquals("einen Apfel", entry.spoken)
+    }
+
+    @Test
     fun `backspace removes a whole entry and not a character`() {
         val accepted = BoardPackageImporter.import(Fixtures.readBytes("message-bar.obz")) as ImportResult.Accepted
         val buttons =
