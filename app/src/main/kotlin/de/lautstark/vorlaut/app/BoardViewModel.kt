@@ -150,11 +150,9 @@ class BoardViewModel(
                 ?.let { destination(it.then, boardPackage) }
                 ?: _state.value.currentBoardId
 
-        // What the bar shows is the vocalization, not the label. SPEC.md 7.3's
-        // sentence says the bar "renders labels", but the message-bar fixture's
-        // scenario has w3 — label "Apfel", vocalization "einen Apfel" — putting
-        // `einen Apfel` in the bar. SPEC.md 13 makes the fixture normative where
-        // the two disagree, so the fixture wins and the sentence is the bug.
+        // What the bar shows is the vocalization, not the label — SPEC.md 7.3,
+        // which now says so outright. MessageBar decides it; this only stores
+        // what came back.
         _state.value = _state.value.copy(entries = entries, currentBoardId = landing)
     }
 
@@ -188,17 +186,36 @@ class BoardViewModel(
     }
 
     /**
-     * The bar's own controls (SPEC.md 7.4's behaviours, reached from the bar
-     * rather than from a button in the grid).
+     * SPEC.md 7.4's `:speak`, reached from the bar rather than from a button in
+     * the grid, and said in the package's own voice.
      *
      * A package may still carry `:speak` or `:clear` buttons and those keep
-     * working; these are the same behaviours put where they belong, so that a
-     * fifteen-cell board does not have to spend three of its cells on
+     * working; the bar's controls are the same behaviours put where they
+     * belong, so that a fifteen-cell board does not spend three of its cells on
      * punctuation.
+     *
+     * Each entry is played from the recording it was pressed on, and only the
+     * entries that never had one fall to the device voice. Handing the joined
+     * text to synthesis instead — which is what this did — spoke a smoother
+     * sentence in a voice that was audibly not the buttons', and a person who
+     * has just heard three recorded words does not expect the fourth reading of
+     * them to be a stranger.
      */
     fun speakBar() {
-        val text = bar.spokenText()
-        if (text.isNotEmpty()) speech.speak(buttonId = null, text = text)
+        val items =
+            bar.contents().mapNotNull { entry ->
+                val clip = entry.soundPath?.let { media.audio(it) }
+                when {
+                    clip != null -> Speech.Utterance.Clip(clip)
+
+                    !entry.spoken.isNullOrBlank() -> Speech.Utterance.Synth(entry.spoken!!)
+
+                    // An entry with neither is silent rather than a gap in a
+                    // sentence that stops half way.
+                    else -> null
+                }
+            }
+        if (items.isNotEmpty()) speech.speakSequence(items)
     }
 
     fun undo() {

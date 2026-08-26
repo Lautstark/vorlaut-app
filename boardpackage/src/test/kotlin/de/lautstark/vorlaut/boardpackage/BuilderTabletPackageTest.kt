@@ -123,6 +123,17 @@ class BuilderTabletPackageTest {
     }
 
     @Test
+    fun `a bar entry keeps the recording its press came from`() {
+        // The other half of MessageBarScenarioTest's null case: this package's
+        // buttons do have clips, and an entry that forgot its clip would send
+        // the whole sentence to the device voice.
+        val bar = MessageBar()
+        bar.press(button("board-1", "board-1-r1c1"))
+        val path = bar.contents().single().soundPath
+        assertTrue("the entry kept no recording: $path", path != null && path.startsWith("sounds/"))
+    }
+
+    @Test
     fun `the three bar actions and navigation all arrive`() {
         // SPEC.md 7.4. None of these can appear in a talker package at all, so
         // this is the first time the builder and this importer have had to agree

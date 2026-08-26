@@ -30,6 +30,17 @@ class MessageBar {
          */
         val imagePath: String? = null,
         val tint: String? = null,
+        /**
+         * The recording the press came from, if it had one.
+         *
+         * The bar remembers it for the same reason it remembers the picture:
+         * `:speak` says the whole sentence, and a sentence whose words were
+         * recorded should be said in the voice they were recorded in rather
+         * than handed to the device's own. Which of the two happens is the
+         * viewer's business — this only keeps the path so the choice is
+         * available at all.
+         */
+        val soundPath: String? = null,
     )
 
     private val entries = ArrayList<Entry>()
@@ -71,6 +82,7 @@ class MessageBar {
                         display = button.spokenText ?: button.label,
                         spoken = button.spokenText,
                         imagePath = button.imagePath,
+                        soundPath = (button.audio as? AudioSource.Recorded)?.path,
                         tint = button.backgroundColor,
                     )
                 null

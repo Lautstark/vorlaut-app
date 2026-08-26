@@ -4,6 +4,8 @@ import android.content.Context
 import android.media.AudioAttributes
 import android.media.MediaDataSource
 import android.media.MediaPlayer
+import android.os.Handler
+import android.os.Looper
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import java.util.Locale
@@ -39,8 +41,39 @@ class Speech(
         ) : Speaking
     }
 
+    /**
+     * One thing to say, so that a sentence can be several.
+     *
+     * `:speak` used to hand the whole composed line to the device voice, which
+     * meant a sentence built entirely out of recorded buttons came back in a
+     * different voice than the buttons themselves — the thing a person notices
+     * immediately and cannot unhear.
+     */
+    sealed interface Utterance {
+        /** A baked clip, played as-is. */
+        class Clip(
+            val bytes: ByteArray,
+        ) : Utterance
+
+        /** A line for the device voice, where a button had no recording. */
+        data class Synth(
+            val text: String,
+        ) : Utterance
+    }
+
     private var onStateChange: (Speaking) -> Unit = {}
     private var player: MediaPlayer? = null
+
+    /* The sentence being said, one utterance at a time. `generation` is what
+       makes stop() final: a clip that finishes after it, or a synthesis whose
+       onDone arrives late, finds its generation stale and stops rather than
+       waking the rest of a sentence nobody is waiting for any more. */
+    private val main = Handler(Looper.getMainLooper())
+    private var queue: List<Utterance> = emptyList()
+    private var at = 0
+    private var generation = 0
+    private var awaiting: String? = null
+    private var onSynthDone: (() -> Unit)? = null
 
     @Volatile private var ttsReady = false
 
@@ -54,15 +87,15 @@ class Speech(
             object : UtteranceProgressListener() {
                 override fun onStart(utteranceId: String?) = Unit
 
-                override fun onDone(utteranceId: String?) = report(Speaking.Silent)
+                override fun onDone(utteranceId: String?) = finishedSpeaking(utteranceId)
 
                 @Deprecated("Superseded by onError(String, Int)", ReplaceWith(""))
-                override fun onError(utteranceId: String?) = report(Speaking.Silent)
+                override fun onError(utteranceId: String?) = finishedSpeaking(utteranceId)
 
                 override fun onError(
                     utteranceId: String?,
                     errorCode: Int,
-                ) = report(Speaking.Silent)
+                ) = finishedSpeaking(utteranceId)
             },
         )
     }
@@ -104,6 +137,14 @@ class Speech(
         bytes: ByteArray,
     ) {
         stop()
+        startClip(buttonId, bytes) { report(Speaking.Silent) }
+    }
+
+    private fun startClip(
+        buttonId: String?,
+        bytes: ByteArray,
+        onDone: () -> Unit,
+    ) {
         val source =
             object : MediaDataSource() {
                 override fun readAt(
@@ -132,9 +173,9 @@ class Speech(
                         .build(),
                 )
                 setDataSource(source)
-                setOnCompletionListener { report(Speaking.Silent) }
+                setOnCompletionListener { onDone() }
                 setOnErrorListener { _, _, _ ->
-                    report(Speaking.Silent)
+                    onDone()
                     false
                 }
                 // prepareAsync, not prepare. Preparing synchronously decodes on
@@ -146,7 +187,9 @@ class Speech(
                 // actually is.
                 setOnPreparedListener {
                     it.start()
-                    report(Speaking.Clip(buttonId))
+                    // A sentence marks nothing: the entries are in the bar, not
+                    // on the board, and there is no cell to light.
+                    if (buttonId != null) report(Speaking.Clip(buttonId))
                 }
                 prepareAsync()
             }
@@ -158,12 +201,87 @@ class Speech(
         text: String,
     ) {
         stop()
-        if (!ttsReady || text.isBlank()) return
+        startSynth(buttonId, text)
+    }
+
+    /**
+     * Says a whole sentence, one utterance after the next.
+     *
+     * Every entry that had a recording is played in the voice it was recorded
+     * in; the rest fall to the device voice, in place, so a mixed sentence
+     * still says all of itself. The alternative — handing the joined text to
+     * the device voice — spoke more smoothly and in the wrong voice, and this
+     * screen belongs to the package rather than to the phone.
+     *
+     * The cost is audible and is the point of the trade: each word was recorded
+     * on its own, so the sentence comes out word by word rather than as one
+     * breath.
+     */
+    fun speakSequence(items: List<Utterance>) {
+        stop()
+        if (items.isEmpty()) return
+        queue = items
+        at = 0
+        step(generation)
+    }
+
+    private fun step(mine: Int) {
+        if (mine != generation) return
+        val item = queue.getOrNull(at)
+        if (item == null) {
+            queue = emptyList()
+            at = 0
+            report(Speaking.Silent)
+            return
+        }
+        when (item) {
+            is Utterance.Clip -> startClip(null, item.bytes) { advance(mine) }
+            is Utterance.Synth -> if (!startSynth(null, item.text)) advance(mine) else Unit
+        }
+    }
+
+    private fun advance(mine: Int) {
+        if (mine != generation) return
+        at += 1
+        // Back to the main thread: a clip finishing and a synthesis finishing
+        // arrive on different threads, and the next utterance builds a
+        // MediaPlayer, which wants a looper it can post its callbacks to.
+        main.post { step(mine) }
+    }
+
+    /** Returns false when nothing will speak, so a sequence can move on. */
+    private fun startSynth(
+        buttonId: String?,
+        text: String,
+    ): Boolean {
+        if (!ttsReady || text.isBlank()) return false
+        val mine = generation
+        // The listener is one object for every utterance there will ever be, and
+        // QUEUE_FLUSH makes the *previous* utterance report done. Without an id
+        // to compare, that report would be taken for this one's and walk the
+        // sentence on a step early.
+        val id = buttonId ?: "$MESSAGE_BAR_UTTERANCE-$mine-$at"
+        awaiting = id
+        onSynthDone = { if (mine == generation) advance(mine) }
         report(Speaking.Synthesised(buttonId))
-        tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, buttonId ?: MESSAGE_BAR_UTTERANCE)
+        tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, id)
+        return true
+    }
+
+    private fun finishedSpeaking(utteranceId: String?) {
+        if (utteranceId != null && utteranceId != awaiting) return
+        awaiting = null
+        val next = onSynthDone
+        onSynthDone = null
+        if (next != null) next() else report(Speaking.Silent)
     }
 
     fun stop() {
+        generation += 1
+        queue = emptyList()
+        at = 0
+        awaiting = null
+        onSynthDone = null
         player?.run {
             runCatching { if (isPlaying) stop() }
             release()
