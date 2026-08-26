@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.lautstark.vorlaut.app.design.Txt
 import de.lautstark.vorlaut.app.design.Vorlaut
+import de.lautstark.vorlaut.app.design.VorlautBoard
 import de.lautstark.vorlaut.boardpackage.Board
 import de.lautstark.vorlaut.boardpackage.Button
 import de.lautstark.vorlaut.boardpackage.ButtonState
@@ -80,7 +81,7 @@ fun BoardScreen(
     // makes the loudest thing on the board the one thing that carries no
     // meaning, and drowns the Fitzgerald tints that do. On a sparse board it
     // is most of the screen. The approved mock does not use it at all.
-    BoxWithConstraints(modifier.fillMaxSize().background(Vorlaut.colors.bg)) {
+    BoxWithConstraints(modifier.fillMaxSize().background(VorlautBoard.ground)) {
         // The seam takes two gaps' worth of width off the row, so the cell size
         // the images and the type scale off has to know about it.
         val across = maxWidth - if (apart) gap * 2 else 0.dp
@@ -92,7 +93,13 @@ fun BoardScreen(
                 Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(gap)) {
                     row.forEachIndexed { column, cellId ->
                         if (apart && column == 1) Spacer(Modifier.width(gap))
-                        Box(Modifier.weight(1f).fillMaxSize()) {
+                        Box(
+                            Modifier
+                                .weight(1f)
+                                .fillMaxSize()
+                                .clip(RoundedCornerShape(Vorlaut.metrics.radius))
+                                .background(VorlautBoard.hole),
+                        ) {
                             // A cell is empty three ways — the grid holds null,
                             // the id names no button, or the button is hidden —
                             // and all three keep their place rather than
@@ -125,8 +132,12 @@ private fun ButtonCell(
     // The tint is the word class, written into background_color by the builder.
     // It is the only colour on this screen that carries meaning, which is why
     // a resting cell has nothing else on it — no border, no shadow, no gradient.
-    val given = parseHex(button.backgroundColor)
-    val tint = given ?: c.surface2
+    // SPEC.md 10.2. `background_color` and `border_color` are the two ways a
+    // word class arrives, and which one the package carries is the setting the
+    // Sammlung was exported with — "Als Fläche" or "Als Rahmen". Neither is
+    // "Aus". The viewer has no switch of its own; it draws what it was given.
+    val fill = parseHex(button.backgroundColor)
+    val edge = parseHex(button.borderColor)
     val image = media.image(button.imagePath, targetPx)
     val radius = RoundedCornerShape(Vorlaut.metrics.radius)
 
@@ -134,7 +145,8 @@ private fun ButtonCell(
         Modifier
             .fillMaxSize()
             .clip(radius)
-            .background(tint)
+            .background(fill ?: VorlautBoard.paper)
+            .then(if (edge != null) Modifier.border(4.dp, edge, radius) else Modifier)
             .then(
                 // The speaking mark is the loudest thing on the button while it
                 // lasts, because it answers "did it hear me" — the question a
@@ -183,7 +195,10 @@ private fun ButtonCell(
                             fontWeight = FontWeight.SemiBold,
                             letterSpacing = (-0.01).sp,
                         ),
-                    color = inkOn(given),
+                    // Always the dark ink. A cell is paper or a pale
+                    // Fitzgerald tint and never anything else, so the label
+                    // does not follow a scheme.
+                    color = VorlautBoard.ink,
                     maxLines = if (image == null) 3 else 1,
                     align = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth(),
@@ -241,21 +256,6 @@ private fun labelSize(
     cell: Dp,
     hasImage: Boolean,
 ) = (cell.value * if (hasImage) 0.11f else 0.17f).coerceIn(9f, 26f).sp
-
-/**
- * The ink that goes on a cell of [tint], where null means the package gave the
- * button no colour of its own.
- *
- * A tint that came from the package is a Fitzgerald key colour: pale by
- * definition and the same in either scheme, so the text on it is always the
- * dark ink and must not follow the theme. A button *without* one falls back to
- * the theme's own plane, and there the text has to be the theme's own — dark
- * ink on `surface2` was black on near-black on every tablet in dark mode,
- * which is most of a board once the builder has left the colours alone.
- */
-@Composable
-@ReadOnlyComposable
-internal fun inkOn(tint: Color?): Color = if (tint != null) Color(0xFF1A1A1D) else Vorlaut.colors.text
 
 /** `#RRGGBB` only — the importer already normalised `rgb(...)` and dropped the rest. */
 internal fun parseHex(value: String?): Color? {

@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
@@ -60,11 +61,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.lautstark.vorlaut.app.design.Txt
 import de.lautstark.vorlaut.app.design.Vorlaut
+import de.lautstark.vorlaut.app.design.VorlautBoard
 import de.lautstark.vorlaut.app.design.VorlautMark
 import de.lautstark.vorlaut.boardpackage.MessageBar
 import kotlinx.coroutines.launch
 
-private val BAR_HEIGHT = 132.dp
 private val HOLD_MILLIS = 1200L
 
 /**
@@ -85,12 +86,10 @@ private val HOLD_MILLIS = 1200L
  * values is not that mistake; every cell-to-cell gap is still identical, and so
  * is every edge.
  */
-private val BAR_TO_GRID = 22.dp
-private val ARROW_WIDTH = 48.dp
-private val SPEAK_WIDTH = 112.dp
-private val CONTROL_WIDTH = 96.dp
-private val CONTROL_ICON = 52.dp
-private val ENTRY_WIDTH = 96.dp
+private val ARROW_WIDTH = 54.dp
+private val SPEAK_WIDTH = 106.dp
+private val CONTROL_WIDTH = 76.dp
+private val CONTROL_ICON = 34.dp
 
 /**
  * The talking screen: the sentence bar above, the board below.
@@ -117,16 +116,17 @@ fun TalkerScreen(
     Column(
         modifier
             .fillMaxSize()
-            .background(Vorlaut.colors.bg)
+            .background(VorlautBoard.ground)
             // The board is full bleed and therefore runs under the status bar
             // and the gesture pill unless it is told not to. A talker whose top
             // row is half under the clock is a talker with a row of unreachable
             // buttons.
             .windowInsetsPadding(WindowInsets.safeDrawing)
-            .padding(Vorlaut.metrics.screenMargin),
-        verticalArrangement = Arrangement.spacedBy(BAR_TO_GRID),
+            .padding(VorlautBoard.edge),
+        verticalArrangement = Arrangement.spacedBy(VorlautBoard.barGap),
     ) {
         SentenceBar(
+            modifier = Modifier.weight(VorlautBoard.BAR_FRACTION),
             entries = state.entries,
             media = media,
             onSpeak = onSpeak,
@@ -134,7 +134,7 @@ fun TalkerScreen(
             onClear = onClear,
             onLeave = onLeave,
         )
-        Box(Modifier.fillMaxSize().weight(1f)) {
+        Box(Modifier.fillMaxSize().weight(1f - VorlautBoard.BAR_FRACTION)) {
             BoardScreen(board = board, state = state, media = media, onPress = onPress)
         }
     }
@@ -142,6 +142,7 @@ fun TalkerScreen(
 
 @Composable
 private fun SentenceBar(
+    modifier: Modifier,
     entries: List<MessageBar.Entry>,
     media: BoardMedia,
     onSpeak: () -> Unit,
@@ -170,8 +171,8 @@ private fun SentenceBar(
     }
 
     Row(
-        Modifier.fillMaxWidth().height(BAR_HEIGHT),
-        horizontalArrangement = Arrangement.spacedBy(gap),
+        modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(7.dp),
     ) {
         // The way out, and the only control here that is not the child's.
         //
@@ -199,28 +200,19 @@ private fun SentenceBar(
             Modifier
                 .weight(1f)
                 .fillMaxHeight()
-                .clip(RoundedCornerShape(Vorlaut.metrics.radius))
-                .background(c.surface),
+                .clip(RoundedCornerShape(Vorlaut.metrics.radiusSm))
+                .background(VorlautBoard.barPlate),
         ) {
-            if (entries.isEmpty()) {
-                // An empty bar is a shape, not a word: "…" is text, and text is
-                // the thing this screen exists for people who cannot use.
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .padding(gap)
-                        .clip(RoundedCornerShape(Vorlaut.metrics.radiusSm))
-                        .background(c.surface2.copy(alpha = 0.55f)),
-                )
-            } else {
-                LazyRow(
-                    state = list,
-                    modifier = Modifier.fillMaxSize().padding(gap),
-                    horizontalArrangement = Arrangement.spacedBy(gap),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    itemsIndexed(entries) { _, entry -> BarEntry(entry, media) }
-                }
+            // An empty bar is the plate and nothing else. A placeholder would be
+            // either text — the thing this screen exists for people who cannot
+            // use — or a shape that has to be learnt as meaning nothing.
+            LazyRow(
+                state = list,
+                modifier = Modifier.fillMaxSize().padding(6.dp),
+                horizontalArrangement = Arrangement.spacedBy(7.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                itemsIndexed(entries) { _, entry -> BarEntry(entry, media) }
             }
         }
 
@@ -228,15 +220,22 @@ private fun SentenceBar(
             scope.launch { list.animateScrollToItem(list.firstVisibleItemIndex + 4) }
         }
 
-        // One primary per view (design.md §4.3). On this screen it is Speak.
+        // One primary per view (design.md §4.3). On this screen it is Speak —
+        // and it is primary by being wider and by having a filled glyph, not by
+        // being the accent. An accent fill was the loudest thing on a screen
+        // whose only colour is supposed to mean word class.
+        //
+        // No labels under the glyphs. Everything the words were carrying has to
+        // be in the content description now, or these are three unnamed buttons
+        // to TalkBack.
         BarControl(
             stringResource(R.string.speak),
             primary = true,
             enabled = entries.isNotEmpty(),
             onClick = onSpeak,
-        ) { SpeakIcon() }
-        BarControl(stringResource(R.string.undo), enabled = entries.isNotEmpty(), onClick = onUndo) { UndoIcon() }
-        BarControl(stringResource(R.string.clear), enabled = entries.isNotEmpty(), onClick = onClear) { ClearIcon() }
+        ) { SpeakIcon(it) }
+        BarControl(stringResource(R.string.undo), enabled = entries.isNotEmpty(), onClick = onUndo) { UndoIcon(it) }
+        BarControl(stringResource(R.string.clear), enabled = entries.isNotEmpty(), onClick = onClear) { ClearIcon(it) }
     }
 }
 
@@ -250,40 +249,39 @@ private fun BarEntry(
     entry: MessageBar.Entry,
     media: BoardMedia,
 ) {
-    val given = parseHex(entry.tint)
-    val tint = given ?: Vorlaut.colors.surface2
     val bmp = media.image(entry.imagePath, 192)
-    Column(
-        Modifier
-            .width(ENTRY_WIDTH)
-            .fillMaxHeight()
-            .clip(RoundedCornerShape(Vorlaut.metrics.radiusSm))
-            .background(tint)
-            .padding(6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        if (bmp != null) {
-            Image(
-                bitmap = bmp,
-                contentDescription = null,
-                contentScale = ContentScale.Fit,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(1f)
-                        .clip(RoundedCornerShape(5.dp))
-                        .background(Color.White),
-            )
-        }
-        entry.display?.let {
+    val shape = RoundedCornerShape(7.dp)
+    if (bmp != null) {
+        Image(
+            bitmap = bmp,
+            contentDescription = entry.display,
+            contentScale = ContentScale.Fit,
+            modifier =
+                Modifier
+                    .fillMaxHeight()
+                    .aspectRatio(1f)
+                    .clip(shape)
+                    .background(VorlautBoard.paper)
+                    .padding(4.dp),
+        )
+    } else {
+        // No picture, so the word is all there is and the card grows to hold it
+        // rather than clipping it. SPEC.md 7.3: the word is the vocalization,
+        // not the label — MessageBar decides which, this only draws it.
+        Box(
+            Modifier
+                .fillMaxHeight()
+                .widthIn(min = 62.dp)
+                .clip(shape)
+                .background(VorlautBoard.paper)
+                .padding(horizontal = 14.dp),
+            contentAlignment = Alignment.Center,
+        ) {
             Txt(
-                it,
-                style = Vorlaut.type.small.copy(fontSize = 13.sp, fontWeight = FontWeight.SemiBold),
-                color = inkOn(given),
+                entry.display.orEmpty(),
+                style = Vorlaut.type.body.copy(fontSize = 15.sp, fontWeight = FontWeight.SemiBold),
+                color = VorlautBoard.ink,
                 maxLines = 1,
-                align = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
             )
         }
     }
@@ -295,17 +293,17 @@ private fun PageArrow(
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
-    val c = Vorlaut.colors
+    val label = stringResource(if (back) R.string.page_back else R.string.page_forward)
     Box(
         Modifier
             .fillMaxHeight()
             .width(ARROW_WIDTH)
-            .alpha(if (enabled) 1f else 0.32f)
-            .clip(RoundedCornerShape(Vorlaut.metrics.radius))
-            .background(c.surface2)
-            .clickable(enabled = enabled) { onClick() },
+            .clip(RoundedCornerShape(Vorlaut.metrics.radiusSm))
+            .background(VorlautBoard.barPlate)
+            .clickable(enabled = enabled) { onClick() }
+            .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
-    ) { Chevron(back, c.textDim) }
+    ) { Chevron(back, if (enabled) VorlautBoard.icon else VorlautBoard.iconDead) }
 }
 
 @Composable
@@ -314,38 +312,30 @@ private fun BarControl(
     primary: Boolean = false,
     enabled: Boolean = true,
     onClick: () -> Unit,
-    icon: @Composable () -> Unit,
+    icon: @Composable (Color) -> Unit,
 ) {
-    val c = Vorlaut.colors
-    Column(
+    Box(
         Modifier
             .fillMaxHeight()
             .width(if (primary) SPEAK_WIDTH else CONTROL_WIDTH)
-            .alpha(if (enabled) 1f else 0.32f)
-            .clip(RoundedCornerShape(Vorlaut.metrics.radius))
-            .background(if (primary && enabled) c.accent else c.surface2)
-            .clickable(enabled = enabled) { onClick() },
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
+            .clip(RoundedCornerShape(Vorlaut.metrics.radiusSm))
+            .background(VorlautBoard.barPlate)
+            .clickable(enabled = enabled) { onClick() }
+            .semantics { contentDescription = label },
+        contentAlignment = Alignment.Center,
     ) {
-        Box(Modifier.size(CONTROL_ICON), contentAlignment = Alignment.Center) { icon() }
-        Txt(
-            label.uppercase(),
-            style = Vorlaut.type.caption.copy(fontSize = 11.sp),
-            color = if (primary && enabled) c.accentInk else c.textDim,
-            maxLines = 1,
-        )
+        Box(
+            Modifier.size(if (primary) CONTROL_ICON + 8.dp else CONTROL_ICON),
+            contentAlignment = Alignment.Center,
+        ) { icon(if (enabled) VorlautBoard.icon else VorlautBoard.iconDead) }
     }
 }
 
 /* The glyphs. Drawn rather than imported: material-icons-extended is a
    megabyte of vectors for four of them, and these four are the whole set. */
 
-@Composable private fun ctlInk(primary: Boolean = false) = if (primary) Vorlaut.colors.accentInk else Vorlaut.colors.textDim
-
 @Composable
-private fun SpeakIcon() {
-    val ink = Vorlaut.colors.accentInk
+private fun SpeakIcon(ink: Color) {
     Canvas(Modifier.size(40.dp)) {
         val u = size.minDimension / 24f
         val body =
@@ -385,8 +375,7 @@ private fun SpeakIcon() {
 }
 
 @Composable
-private fun UndoIcon() {
-    val ink = Vorlaut.colors.textDim
+private fun UndoIcon(ink: Color) {
     Canvas(Modifier.size(40.dp)) {
         val u = size.minDimension / 24f
         val s = Stroke(2.2f * u, cap = StrokeCap.Round)
@@ -408,8 +397,7 @@ private fun UndoIcon() {
 }
 
 @Composable
-private fun ClearIcon() {
-    val ink = Vorlaut.colors.textDim
+private fun ClearIcon(ink: Color) {
     Canvas(Modifier.size(40.dp)) {
         val u = size.minDimension / 24f
         val s = Stroke(2.2f * u, cap = StrokeCap.Round)

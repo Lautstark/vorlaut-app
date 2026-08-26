@@ -49,6 +49,8 @@
     <string name="warnings_intro">Diese Sammlung funktioniert. Ändern kann das nur, wer sie gebaut hat — die Reihenfolge unten ist die, in der es auf der Tafel steht.</string>
     <string name="no_warnings">Nichts fehlt in dieser Sammlung.</string>
 
+    <string name="page_back">Im Satz zurückblättern</string>
+    <string name="page_forward">Im Satz weiterblättern</string>
     <string name="speak">Sprechen</string>
     <string name="undo">Rückgängig</string>
     <string name="clear">Leeren</string>

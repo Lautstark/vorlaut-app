@@ -60,7 +60,15 @@ class MessageBar {
             OnActivate.Append -> {
                 entries +=
                     Entry(
-                        display = button.label,
+                        // SPEC.md 7.3: an entry shows its vocalization, falling
+                        // back to the label when the button has none. A button
+                        // labelled "Apfel" that says "einen Apfel" puts the
+                        // phrase in the bar, so the bar reads as the sentence it
+                        // is about to speak rather than as the row of keys that
+                        // built it. This said `button.label`, which is the
+                        // reading an earlier draft of 7.3 had and the fixture
+                        // never checked - it asserts `spoken` and nothing else.
+                        display = button.spokenText ?: button.label,
                         spoken = button.spokenText,
                         imagePath = button.imagePath,
                         tint = button.backgroundColor,
