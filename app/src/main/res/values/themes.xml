@@ -1,4 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  The dark Material theme, and no light one beside it.
+
+  This is not decoration, it is what the window is made of before Compose draws
+  a pixel. From Android 15 an app is edge to edge whether it asks or not, so the
+  system no longer paints the navigation bar: it hands the strip to the app and
+  takes only the icon colour from the theme. The board insets its content away
+  from that strip, which leaves the *window background* showing there — and with
+  a Light parent that background is white. A dark board with a white band under
+  it was the whole complaint.
+
+  A dark parent fixes both halves at once: the background behind the bars is
+  dark, and windowLightNavigationBar/windowLightStatusBar are false, so the
+  system draws its icons light. Nothing has to be set at runtime, and no
+  androidx.core dependency has to be added to say it.
+-->
 <resources>
-    <style name="Theme.Vorlaut" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.Vorlaut" parent="android:Theme.Material.NoActionBar" />
 </resources>
