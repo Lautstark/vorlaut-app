@@ -21,9 +21,19 @@ internal object Actions {
         buttonId: String,
         warnings: WarningList,
     ): OnActivate {
+        // SPEC.md 7.3, since 1.2.0: the flag is a modifier and not a row of the
+        // table. It does not decide which navigation happens - it says the
+        // button puts its entry in the bar on the way through - so it is read
+        // once here and applied to whatever navigation the button turns out to
+        // carry. On anything else it is ignored, in silence: no warning and no
+        // fault, because an appending button already appends and a
+        // speak-immediately button carrying it meant something the format has
+        // no way to say. Fixture navigate-and-append pins that on its c3.
+        val carries = button.bool("ext_lautstark_append_on_navigate") == true
+
         // SPEC.md 7.3: load_board takes precedence over an action if a button
         // somehow carries both.
-        button.obj("load_board")?.str("id")?.let { return OnActivate.Navigate(it) }
+        button.obj("load_board")?.str("id")?.let { return carrying(OnActivate.Navigate(it), carries) }
 
         val actions = button.arr("actions")?.mapNotNull { it.asStringOrNull() }
         if (!actions.isNullOrEmpty()) {
@@ -37,11 +47,22 @@ internal object Actions {
                 return disable(unimplemented, boardId, buttonId, warnings)
             }
             val resolved = actions.map { IMPLEMENTED.getValue(it) }
-            return resolved.singleOrNull() ?: OnActivate.Sequence(resolved)
+            // A one-element array is the same button as the singular field, so
+            // it carries the same way. SPEC.md 7.3 names `action: ":home"` and
+            // says nothing about `actions: [":home"]`; the two are one button
+            // written twice, and a reading where only one of them may carry a
+            // word is a distinction nobody could explain to the person building
+            // the board. A longer sequence carries nothing - the flag says
+            // "append before navigating", and there is no navigation in a
+            // sequence, only steps.
+            return resolved.singleOrNull()?.let { carrying(it, carries) } ?: OnActivate.Sequence(resolved)
         }
 
         button.str("action")?.let { action ->
-            return IMPLEMENTED[action] ?: disable(action, boardId, buttonId, warnings)
+            // A disabled button appends nothing either: doing nothing at all is
+            // what disabled means, and carrying() is not reached for it.
+            return IMPLEMENTED[action]?.let { carrying(it, carries) }
+                ?: disable(action, boardId, buttonId, warnings)
         }
 
         // SPEC.md 4.3. OBF cannot express "speak this now and leave the bar
@@ -51,6 +72,13 @@ internal object Actions {
 
         return OnActivate.Append
     }
+
+    /** SPEC.md 7.3's append-on-navigate, applied where there is a navigation to
+     *  apply it to. Everything else is returned untouched. */
+    private fun carrying(
+        resolved: OnActivate,
+        carries: Boolean,
+    ): OnActivate = if (carries && resolved is OnActivate.Navigation) OnActivate.AppendThenNavigate(resolved) else resolved
 
     private fun disable(
         action: String,

@@ -327,7 +327,16 @@ object BoardPackageImporter {
         // A button only carries audio if pressing it makes a sound of its own.
         // :speak speaks the bar, :home navigates - neither has audio to resolve,
         // and a disabled button never gets to make one.
-        val speaks = onActivate == OnActivate.Append || onActivate == OnActivate.SpeakImmediately
+        //
+        // A carrying button does: it appends, and appending is what utters. The
+        // navigation afterwards changes nothing about what was said, so it earns
+        // the same clip as the word button it also is. Without this it opens the
+        // next board in silence, which is the quiet half of the failure - the
+        // board still changes, so nothing looks broken.
+        val speaks =
+            onActivate == OnActivate.Append ||
+                onActivate == OnActivate.SpeakImmediately ||
+                onActivate is OnActivate.AppendThenNavigate
         val sound =
             if (speaks) {
                 resolveSound(button.str("sound_id"), boardId, buttonId, archive, sounds, soundPaths, warnings)

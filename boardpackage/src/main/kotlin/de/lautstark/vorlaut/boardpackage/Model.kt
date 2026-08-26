@@ -133,6 +133,17 @@ sealed interface OnActivate {
     /** The wire name used by the conformance fixtures' `on_activate` field. */
     val wireName: String
 
+    /**
+     * The two presses that change which board is showing.
+     *
+     * They are one type because SPEC.md 7.3's append-on-navigate applies to both
+     * and to nothing else, so [AppendThenNavigate] can hold exactly the things
+     * it is allowed to hold rather than any `OnActivate` and a rule in prose.
+     * The screen has the same question — where does this press go — and gets to
+     * ask it once.
+     */
+    sealed interface Navigation : OnActivate
+
     /** Append one entry to the message bar. The default and the common case. */
     data object Append : OnActivate {
         override val wireName = "append"
@@ -159,15 +170,38 @@ sealed interface OnActivate {
     }
 
     /** `:home` — navigate to the board named by `manifest.root`. */
-    data object Home : OnActivate {
+    data object Home : Navigation {
         override val wireName = "home"
     }
 
     /** `load_board` — navigate, and do not touch the bar. */
     data class Navigate(
         val boardId: String,
-    ) : OnActivate {
+    ) : Navigation {
         override val wireName = "navigate:$boardId"
+    }
+
+    /**
+     * `ext_lautstark_append_on_navigate` (SPEC.md 4.3, 7.3, since 1.2.0): append
+     * one entry exactly as [Append] does, **then** navigate. One press, both
+     * halves, and the order is normative — the entry has to be in the bar by the
+     * time the new board is drawn.
+     *
+     * This is the carrier phrase, which is how a sentence starter is built:
+     * "ich will" belongs in the sentence, and the board its object is on is
+     * where the next press has to happen. Without it that is two presses on two
+     * boards, the second of them after leaving the board that named it.
+     *
+     * A wrapper rather than a flag on [Navigate] and [Home], because the flag
+     * would then have to be answered by every site that matches on those two —
+     * and the interesting sites are the ones that must **not** treat this as
+     * plain navigation, which a defaulted boolean lets them go on doing. This
+     * way the compiler asks each of them.
+     */
+    data class AppendThenNavigate(
+        val then: Navigation,
+    ) : OnActivate {
+        override val wireName = "append+${then.wireName}"
     }
 
     /**

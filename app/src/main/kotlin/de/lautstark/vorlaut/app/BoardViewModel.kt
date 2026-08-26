@@ -100,30 +100,27 @@ class BoardViewModel(
         // them, so this refuses rather than doing something approximate.
         if (button.onActivate == OnActivate.Disabled) return
 
-        when (val action = button.onActivate) {
-            is OnActivate.Navigate -> {
-                speech.stop()
-                _state.value = state.copy(currentBoardId = action.boardId)
-                return
-            }
+        val action = button.onActivate
 
-            OnActivate.Home -> {
-                speech.stop()
-                _state.value = state.copy(currentBoardId = boardPackage.rootBoardId)
-                return
-            }
-
-            else -> {
-                Unit
-            }
+        // Plain navigation: silent, and the bar goes with it untouched.
+        if (action is OnActivate.Navigation) {
+            speech.stop()
+            _state.value = state.copy(currentBoardId = destination(action, boardPackage))
+            return
         }
 
         val spoken = bar.press(button)
         val entries = bar.contents()
 
-        when (button.onActivate) {
-            OnActivate.Append, OnActivate.SpeakImmediately -> {
+        when (action) {
+            OnActivate.Append, OnActivate.SpeakImmediately, is OnActivate.AppendThenNavigate -> {
                 // The button's own voice: its clip if it has one, synthesis if not.
+                //
+                // A carrying button speaks like the word button it also is, and
+                // the speech is deliberately not stopped for the navigation that
+                // follows - it is this button's own word, cut off half a syllable
+                // in by the board change if the navigation were treated as one of
+                // the silent ones above.
                 utter(button)
             }
 
@@ -140,13 +137,37 @@ class BoardViewModel(
             }
         }
 
+        /* Where a carrying button leaves the person standing (SPEC.md 7.3).
+         *
+         * Written in the *same* state update as the entry, which is what makes
+         * the order the spec requires true rather than merely likely: the entry
+         * MUST be in the bar by the time the new board is drawn, and two updates
+         * would give Compose a frame in which the new board is on screen and the
+         * word that opened it is not.
+         */
+        val landing =
+            (action as? OnActivate.AppendThenNavigate)
+                ?.let { destination(it.then, boardPackage) }
+                ?: _state.value.currentBoardId
+
         // What the bar shows is the vocalization, not the label. SPEC.md 7.3's
         // sentence says the bar "renders labels", but the message-bar fixture's
         // scenario has w3 — label "Apfel", vocalization "einen Apfel" — putting
         // `einen Apfel` in the bar. SPEC.md 13 makes the fixture normative where
         // the two disagree, so the fixture wins and the sentence is the bug.
-        _state.value = _state.value.copy(entries = entries)
+        _state.value = _state.value.copy(entries = entries, currentBoardId = landing)
     }
+
+    /** Which board a navigating press lands on. `:home` follows `manifest.root`
+     *  rather than wherever the walk started. */
+    private fun destination(
+        action: OnActivate.Navigation,
+        boardPackage: BoardPackage,
+    ): String? =
+        when (action) {
+            is OnActivate.Navigate -> action.boardId
+            OnActivate.Home -> boardPackage.rootBoardId
+        }
 
     /**
      * SPEC.md 9.2: a clip is played; a button whose audio was promised and is
