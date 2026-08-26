@@ -21,8 +21,8 @@ import org.junit.Test
  * third of what SPEC.md describes, because a five-key device has no use for the
  * rest. This one opens a tablet Sammlung, which uses the other two thirds: an
  * arbitrary grid, buttons that compose into the message bar, `background_color`
- * carrying a word class, `:speak`, `:clear` and `:home`, and navigation between
- * pages that is not a ring.
+ * carrying a word class, `:home`, and navigation between pages that is not a
+ * ring.
  *
  * `builder/vorlaut-tablet.obz` is therefore a **sample, not a fixture**, for
  * exactly the reason the one beside it is. docs/exchange-pin.md forbids copying
@@ -67,7 +67,12 @@ class BuilderTabletPackageTest {
     @Test
     fun `it says who it is, the way SPEC 3 and 8 require`() {
         val pkg = imported().boardPackage
-        assertEquals(SpecVersion(1, 0, 0), pkg.specVersion)
+        // Higher than the 1.1.0 this importer implements, and accepted on
+        // purpose: SPEC.md 12 says a minor version only adds fields and actions
+        // and that an importer MUST accept a higher one, falling back on 10.3
+        // for what it does not know. The sample is what makes that rule a thing
+        // that happens rather than a thing the spec asserts.
+        assertEquals(SpecVersion(1, 2, 0), pkg.specVersion)
         assertTrue("package id is not a uuid: ${pkg.id}", pkg.id.matches(Regex("[0-9a-f-]{36}")))
         assertNotNull(pkg.modified)
         // False whatever the symbols are: the flag says "may be passed on", and a
@@ -134,13 +139,29 @@ class BuilderTabletPackageTest {
     }
 
     @Test
-    fun `the three bar actions and navigation all arrive`() {
-        // SPEC.md 7.4. None of these can appear in a talker package at all, so
-        // this is the first time the builder and this importer have had to agree
-        // about any of them.
-        assertEquals(OnActivate.SpeakBar, button("board-1", "board-1-r3c1").onActivate)
-        assertEquals(OnActivate.Clear, button("board-1", "board-1-r3c2").onActivate)
+    fun `the actions the builder still writes arrive, and so does navigation`() {
+        // SPEC.md 7.4, and none of it can appear in a talker package at all.
+        //
+        // `:home` is the only one of the three left in a cell. The builder
+        // stopped writing `:speak` and `:clear` buttons once this viewer drew
+        // Sprechen, Zurück and Weg on the message bar itself (TalkerScreen's
+        // BarControl row): a grid button for one of them spent a cell out of
+        // fifteen duplicating a control that is always on screen. Nothing in
+        // the chrome goes home, so home still needs a cell.
+        //
+        // The two are not gone from the format and this suite has not stopped
+        // covering them: `message-bar.obz` is normative about both and
+        // MessageBarScenarioTest walks it press by press. What is gone is
+        // *builder-written* evidence for them, which is the thing a sample is
+        // for and a fixture is not.
         assertEquals(OnActivate.Home, button("board-2", "board-2-r3c5").onActivate)
+
+        // The other thing a word button can be on a tablet: SPEC.md 7.3's
+        // ext_lautstark_speak_immediately, said at once and left out of the
+        // sentence. Every key in BuilderPackageTest carries that flag because a
+        // five-key device has no bar; this is the same flag on a board that has
+        // one, which is the case only a tablet package can show.
+        assertEquals(OnActivate.SpeakImmediately, button("board-1", "board-1-r3c1").onActivate)
 
         // Navigation between pages, which is a graph rather than the device's
         // ring: one button leads from the start page to the food page, and
@@ -152,7 +173,7 @@ class BuilderTabletPackageTest {
     }
 
     @Test
-    fun `a word class arrives as a background colour`() {
+    fun `a word class arrives as a background colour, and a page has none of its own`() {
         val pkg = imported().boardPackage
         // The Modified Fitzgerald Key, which is how German AAC boards are
         // coloured. The builder stores the class and resolves it to a colour on
@@ -165,17 +186,23 @@ class BuilderTabletPackageTest {
         assertEquals("#C7F3C7", button("board-1", "board-1-r1c2").backgroundColor) // verb
         assertEquals("#FFDA89", button("board-1", "board-1-r1c3").backgroundColor) // noun
         assertEquals("#D8AF97", button("board-1", "board-1-r1c4").backgroundColor) // category
-        // Every board still carries its own whole-page colour, which is a
-        // different job: word classes colour a word, this colours a place.
-        assertEquals("#3B5BDB", board("board-1").color)
-        assertEquals("#159947", board("board-2").color)
-        assertTrue(
-            "board colours are not distinct",
-            pkg.boards
-                .map { it.color }
-                .toSet()
-                .size == 2,
-        )
+        assertEquals("#FDCAE1", button("board-1", "board-1-r3c1").backgroundColor) // social
+
+        // And no whole-page colour on either board, because the builder writes
+        // none any more — for this half or for the talker's. That is the
+        // builder ceasing to write an optional field, which is not the same act
+        // as the field leaving the format: SPEC.md 4.2 still lists
+        // `ext_lautstark_board_color`, Board.color is still nullable, and
+        // BoardPackageImporter still reads and normalises it. It has to stay
+        // read. A package written before tonight carries one, and ADR 0007
+        // replaces a package wholesale on re-import — so a viewer that forgot
+        // the field would quietly drop the colours off a board that had them.
+        //
+        // Which makes this the assertion that was never made while every sample
+        // had a colour in it: the absence path, and that it is silent. Nothing
+        // renders the value in any case — BoardScreen keeps the ground neutral
+        // on purpose, and says why.
+        for (one in pkg.boards) assertNull("a page colour on ${one.id}", one.color)
     }
 
     @Test
@@ -183,20 +210,17 @@ class BuilderTabletPackageTest {
         val pkg = imported().boardPackage
         // The builder bakes a clip where pressing the button speaks its own
         // text, and nowhere else. BoardViewModel utters on Append and on
-        // SpeakImmediately; navigation is silent and `:speak` always synthesises
-        // the composed sentence, because the bar has no clip of its own. A clip
-        // on any of those would be an archive member nothing can play, on a
-        // board that may carry hundreds of buttons.
-        val speaks = listOf("board-1-r1c1", "board-1-r1c2", "board-1-r1c3")
+        // SpeakImmediately and on nothing else: navigation is silent, and so is
+        // `:home`. A clip on either would be an archive member nothing can play,
+        // on a board that may carry hundreds of buttons.
+        val speaks = listOf("board-1-r1c1", "board-1-r1c2", "board-1-r1c3", "board-1-r3c1")
         for (id in speaks) {
             assertTrue("no clip on $id", button("board-1", id).audio is AudioSource.Recorded)
         }
-        for (id in listOf("board-1-r1c4", "board-1-r3c1", "board-1-r3c2")) {
-            assertNull("a clip on a button that never speaks: $id", button("board-1", id).audio)
-        }
+        assertNull("a clip on a button that never speaks: board-1-r1c4", button("board-1", "board-1-r1c4").audio)
         assertNull("a clip on :home", button("board-2", "board-2-r3c5").audio)
 
-        // Two of the three clips are one member of the archive: the sample's
+        // Two of the clips are one member of the archive: the sample's
         // stand-in synthesiser answers two of these sentences identically, and
         // content-addressed naming quite correctly writes one file for them.
         // Asserted because it is the behaviour rather than an accident.

@@ -29,8 +29,8 @@ five-key device has no use for the rest.
 
 A **tablet** Sammlung uses the rest: a grid the builder chose, buttons that
 compose into the message bar, `background_color` carrying a word class, the
-`:speak`, `:clear` and `:home` actions, and navigation that is a graph rather
-than a ring. None of those can appear in a talker package at all.
+`:home` action, and navigation that is a graph rather than a ring. None of
+those can appear in a talker package at all.
 
 ## What they are
 
@@ -43,11 +43,13 @@ Exported from a Sammlung with two sets, made through the page by
 |---|---|
 | Boards | `set-1` "Morgens", `set-2` "Spielen", ringed by their set keys |
 | Speech keys | three, all `ext_lautstark_speak_immediately` |
+| Colours | none at all. The set colour drew the border round all five displays and was written as `border_color` per key and `ext_lautstark_board_color` per board; the builder writes neither now. |
 | Pictures | one PNG, 16×16, uploaded rather than picked — so `symbol_source: none` |
 | Recordings | three Ogg Opus clips, from the browser's own WebCodecs encoder |
 | Voice | `de-DE-KatjaNeural`, `locale: de-DE` |
+| Profile | `ext_lautstark_spec_version` 1.2.0, above the 1.1.0 this importer implements — SPEC.md §12 requires accepting a higher minor, and this is where that happens rather than being asserted |
 
-**Cut from vorlaut-diy-talker@16cfd1f, 2026-08-24.**
+**Cut from vorlaut-diy-talker@4055c1f, 2026-08-26.**
 
 ### `vorlaut-tablet.obz`
 
@@ -57,18 +59,28 @@ Exported from a tablet Sammlung with two pages, made through the page by
 | | |
 |---|---|
 | Grid | 3×5, the same on both boards |
-| Boards | `board-1` (root, blue), `board-2` "Essen" (green), reached by one button |
-| Buttons | three appending, one navigating, and `:speak`, `:clear`, `:home` |
-| Colours | Modified Fitzgerald Key, as `background_color` per button. No page colour — the builder stopped writing `ext_lautstark_board_color` for tablet Sammlungen. |
+| Boards | `board-1` (root, unnamed), `board-2` "Essen", reached by one button |
+| Buttons | three appending, one `ext_lautstark_speak_immediately`, one navigating, and `:home` |
+| Colours | Modified Fitzgerald Key, as `background_color` per button. No page colour — the builder stopped writing `ext_lautstark_board_color`, for this half and for the talker. |
 | Pictures | one PNG, uploaded rather than picked — so `symbol_source: none` |
-| Recordings | Ogg Opus, on the appending buttons only |
+| Recordings | Ogg Opus, on the buttons that speak their own text |
 | Voice | `de-DE-KatjaNeural`, `locale: de-DE` |
+| Profile | `ext_lautstark_spec_version` 1.2.0, as above |
 
 Two of its buttons share one clip. That is not a defect: the stand-in
 synthesiser answers two of these sentences identically and content-addressed
 naming writes one member for them, which the test asserts rather than tolerates.
 
-**Cut from vorlaut-diy-talker@70a2614, 2026-08-25.**
+No `:speak` and no `:clear` any more: the builder stopped putting those in
+cells once the viewer drew Sprechen, Zurück and Weg on the message bar itself,
+so a grid button for one of them spent a cell out of fifteen duplicating a
+control that is always on screen. `:home` stays, because nothing in the chrome
+goes home. Neither action has left the format, and `message-bar.obz` is still
+normative about both — what these two samples no longer carry is
+*builder-written* evidence for them, which is a real loss and is recorded here
+rather than in a commit message.
+
+**Cut from vorlaut-diy-talker@4055c1f, 2026-08-26.**
 
 ## Cutting a new one
 
