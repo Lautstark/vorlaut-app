@@ -97,8 +97,17 @@ class MessageBar {
             }
 
             // Navigation must not touch the bar, and a dead button does nothing.
-            OnActivate.Home, is OnActivate.Navigate, OnActivate.Disabled -> {
+            is OnActivate.Navigation, OnActivate.Disabled -> {
                 null
+            }
+
+            // SPEC.md 7.3's append-on-navigate: the same entry an ordinary press
+            // would leave, and then a navigation this class knows nothing about.
+            // Delegated rather than repeated, so there is one place that decides
+            // what an entry holds - the bug that put labels in the bar instead of
+            // vocalizations was one such decision written twice.
+            is OnActivate.AppendThenNavigate -> {
+                press(button.copy(onActivate = OnActivate.Append))
             }
 
             is OnActivate.Sequence -> {

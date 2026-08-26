@@ -8,7 +8,7 @@ import org.junit.Test
 
 /**
  * The conformance suite. These fixtures are the acceptance criteria for the
- * importer: an importer is conformant at v1.0.0 when it produces, for each
+ * importer: an importer is conformant at v1.2.0 when it produces, for each
  * fixture, the outcome in the matching `.expected.json`.
  */
 class ConformanceTest {
@@ -35,7 +35,7 @@ class ConformanceTest {
         // The index is the machine-readable list and step 1 of the contract, so it
         // decides how many there are. Pinned as a tripwire: fixtures appearing or
         // vanishing under a pin is exactly the change that must not pass quietly.
-        assertEquals("fixture count changed under the pin", 14, index.size)
+        assertEquals("fixture count changed under the pin", 15, index.size)
         val unknownBlocks = blocked.keys - index.map { it.name }.toSet()
         assertTrue(
             "blocked fixtures that no longer exist: $unknownBlocks",

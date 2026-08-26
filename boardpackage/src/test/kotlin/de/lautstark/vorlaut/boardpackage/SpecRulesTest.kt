@@ -19,6 +19,20 @@ import java.util.zip.ZipOutputStream
  * stays a test of the rules and not a second, unpinned fixture set.
  */
 class SpecRulesTest {
+    private companion object {
+        /** SPEC.md 7.3's flag on the array spelling of `:home`. */
+        const val CARRYING_HOME_ARRAY =
+            """[ { "id": "b1", "label": "bitte", "actions": [":home"], "ext_lautstark_append_on_navigate": true } ]"""
+
+        /** The flag on a button 7.4 disables. */
+        const val CARRYING_UNKNOWN_ACTION =
+            """[ { "id": "b1", "label": "Zwei", "action": ":quatsch", "ext_lautstark_append_on_navigate": true } ]"""
+
+        /** The flag with nothing to navigate to. */
+        const val CARRYING_PLAIN_WORD =
+            """[ { "id": "b1", "label": "Apfel", "vocalization": "einen Apfel", "ext_lautstark_append_on_navigate": true } ]"""
+    }
+
     private fun archive(vararg members: Pair<String, String>): ByteArray {
         val out = ByteArrayOutputStream()
         ZipOutputStream(out).use { zip ->
@@ -59,18 +73,66 @@ class SpecRulesTest {
         rows: Int = 1,
         columns: Int = 1,
         order: String = """[["b1"]]""",
+        buttons: String = """[ { "id": "b1", "label": "Hello" } ]""",
     ) = """
         {
           "format": "open-board-0.1",
           "id": "b",
           "locale": "en",
           "name": "Board",
-          "buttons": [ { "id": "b1", "label": "Hello" } ],
+          "buttons": $buttons,
           "grid": { "rows": $rows, "columns": $columns, "order": $order }
         }
         """.trimIndent()
 
+    /** The one button of a single-button package, imported. */
+    private fun onlyButton(buttons: String): Button {
+        val bytes =
+            archive(
+                "manifest.json" to manifest(),
+                "boards/b.obf" to board(buttons = buttons),
+            )
+        val accepted = BoardPackageImporter.import(bytes) as ImportResult.Accepted
+        return accepted.boardPackage.boards
+            .single()
+            .buttons
+            .single()
+    }
+
     private fun rejectionOf(bytes: ByteArray): RejectionCode? = (BoardPackageImporter.import(bytes) as? ImportResult.Rejected)?.code
+
+    @Test
+    fun `append-on-navigate rides on an actions array holding only colon-home`() {
+        // SPEC.md 7.3 names `action: ":home"` and says nothing about the array
+        // spelling of the same button. They are one button written two ways, and
+        // a reading where only one of them may carry a word is a distinction
+        // nobody could explain to the person building the board. No fixture
+        // reaches this, which is why it is pinned here.
+        val button = onlyButton(CARRYING_HOME_ARRAY)
+        assertEquals(OnActivate.AppendThenNavigate(OnActivate.Home), button.onActivate)
+    }
+
+    @Test
+    fun `append-on-navigate on a disabled button appends nothing at all`() {
+        // SPEC.md 7.4 disables a button carrying an action this importer does not
+        // implement, and 7.3 says a disabled button appends nothing either -
+        // doing nothing is what disabled means. The failure this guards against
+        // is a button that looks dead and quietly writes into the sentence.
+        val button = onlyButton(CARRYING_UNKNOWN_ACTION)
+        assertEquals(OnActivate.Disabled, button.onActivate)
+        val bar = MessageBar()
+        bar.press(button)
+        assertTrue("a disabled button must not touch the bar", bar.contents().isEmpty())
+    }
+
+    @Test
+    fun `append-on-navigate on an ordinary word button changes nothing`() {
+        // The flag with nothing to navigate to. Ignored in silence: an appending
+        // button already appends, so there is nothing for a viewer to do and
+        // nothing worth telling a caregiver about.
+        val button = onlyButton(CARRYING_PLAIN_WORD)
+        assertEquals(OnActivate.Append, button.onActivate)
+    }
 
     @Test
     fun `a member name that escapes the archive root is refused`() {

@@ -5,6 +5,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import org.junit.Assert.assertEquals
 import java.io.File
 
 /**
@@ -45,6 +46,73 @@ object Fixtures {
             )
         }
 }
+
+/**
+ * Walks a fixture's `scenario`: an ordered list of presses with the bar contents
+ * after each, and — where the walk navigates — the board left showing.
+ *
+ * Shared by the two fixtures that carry one, because the walk is the same walk.
+ * The button for each step is looked up **on the board currently showing**, which
+ * is what makes the navigation part of the assertion rather than decoration: a
+ * press that should have changed boards and did not fails here on a button that
+ * is not where the walk is standing.
+ *
+ * The `:home` and `load_board` destinations are resolved here rather than taken
+ * from the app's BoardViewModel, which cannot be reached from this module and
+ * must not be — `:boardpackage` is a plain JVM library on purpose. The rule is
+ * SPEC.md 7.4's and small enough to state twice; what would be worth sharing is
+ * the *bar*, and that already is.
+ */
+internal fun walkScenario(
+    fixtureFile: String,
+    expectedFile: String,
+) {
+    val accepted = BoardPackageImporter.import(Fixtures.readBytes(fixtureFile)) as ImportResult.Accepted
+    val boardPackage = accepted.boardPackage
+    val buttons =
+        boardPackage.boards
+            .flatMap { board -> board.buttons.map { (board.id to it.id) to it } }
+            .toMap()
+
+    val bar = MessageBar()
+    var showing = boardPackage.rootBoardId
+    val scenario = Fixtures.readJson(expectedFile).array("scenario")!!
+
+    scenario.filterIsInstance<JsonObject>().forEachIndexed { index, step ->
+        val where = "step $index (${step.string("step")})"
+        val buttonId = step.string("step")!!.removePrefix("activate ")
+        val button =
+            buttons[showing to buttonId]
+                ?: throw AssertionError("$where: no button $buttonId on board $showing, which is the one showing")
+
+        val spoken = bar.press(button)
+        showing =
+            when (val action = button.onActivate) {
+                is OnActivate.Navigation -> destinationOf(action, boardPackage)
+                is OnActivate.AppendThenNavigate -> destinationOf(action.then, boardPackage)
+                else -> showing
+            }
+
+        assertEquals(
+            "$where: bar contents",
+            step.array("bar").orEmpty().mapNotNull { it.textOrNull() },
+            bar.contents().mapNotNull { it.spoken },
+        )
+        assertEquals("$where: what was spoken", step.string("spoken"), spoken)
+        if (step.declares("board")) {
+            assertEquals("$where: the board left showing", step.string("board"), showing)
+        }
+    }
+}
+
+private fun destinationOf(
+    action: OnActivate.Navigation,
+    boardPackage: BoardPackage,
+): String =
+    when (action) {
+        is OnActivate.Navigate -> action.boardId
+        OnActivate.Home -> boardPackage.rootBoardId
+    }
 
 data class FixtureEntry(
     val name: String,

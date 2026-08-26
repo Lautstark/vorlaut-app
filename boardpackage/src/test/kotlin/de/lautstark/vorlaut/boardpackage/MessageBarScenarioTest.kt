@@ -1,6 +1,5 @@
 package de.lautstark.vorlaut.boardpackage
 
-import kotlinx.serialization.json.JsonObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -13,33 +12,7 @@ import org.junit.Test
 class MessageBarScenarioTest {
     @Test
     fun `the scenario walk produces the stated bar and speech at every step`() {
-        val result = BoardPackageImporter.import(Fixtures.readBytes("message-bar.obz"))
-        val accepted = result as ImportResult.Accepted
-        val buttons =
-            accepted.boardPackage.boards
-                .single()
-                .buttons
-                .associateBy { it.id }
-
-        val bar = MessageBar()
-        val scenario = Fixtures.readJson("message-bar.expected.json").array("scenario")!!
-        scenario.filterIsInstance<JsonObject>().forEachIndexed { index, step ->
-            val buttonId = step.string("step")!!.removePrefix("activate ")
-            val button = buttons.getValue(buttonId)
-            val spoken = bar.press(button)
-
-            val wantedBar = step.array("bar").orEmpty().mapNotNull { it.textOrNull() }
-            assertEquals(
-                "step $index (${step.string("step")}): bar contents",
-                wantedBar,
-                bar.contents().mapNotNull { it.spoken },
-            )
-            assertEquals(
-                "step $index (${step.string("step")}): what was spoken",
-                step.string("spoken"),
-                spoken,
-            )
-        }
+        walkScenario("message-bar.obz", "message-bar.expected.json")
     }
 
     @Test
