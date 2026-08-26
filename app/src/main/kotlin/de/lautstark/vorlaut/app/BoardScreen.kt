@@ -25,6 +25,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
@@ -141,11 +143,36 @@ private fun ButtonCell(
     val image = media.image(button.imagePath, targetPx)
     val radius = RoundedCornerShape(Vorlaut.metrics.radius)
 
+    /* A way back to the start page is furniture, not a word, and is drawn as
+     * the furniture it is: the sentence bar's own plate, with the picture in
+     * the bar's own ink and no label under it.
+     *
+     * The colours are not a new pair. barPlate and icon are what Speak, Undo
+     * and Clear are already drawn in one band down — see BarControl in
+     * TalkerScreen.kt — and that is the whole argument for this treatment
+     * rather than merely its implementation. Everything a resting cell has
+     * says "this is a word": paper under it because pictograms are drawn for
+     * white, the Fitzgerald tint that says which kind of word, the label
+     * spelling it. `:home` is none of those. Drawn as a word it reads as one,
+     * and on a first board it is the only button that is not.
+     *
+     * Only a bare `:home`. AppendThenNavigate(Home) is a word that also goes
+     * home — "bitte", said and then back to the start — and it keeps its
+     * label, its tint and its paper, because it really is one.
+     *
+     * And only where the package left the colour to us. The note above says
+     * this viewer draws what it was given and has no switch of its own; a
+     * hand-authored `:home` carrying a background_color has been given a
+     * colour on purpose, and taking it away would make that sentence false for
+     * the sake of a default. Every start key the builder writes carries none.
+     */
+    val chrome = button.onActivate == OnActivate.Home && fill == null && edge == null
+
     Box(
         Modifier
             .fillMaxSize()
             .clip(radius)
-            .background(fill ?: VorlautBoard.paper)
+            .background(if (chrome) VorlautBoard.barPlate else fill ?: VorlautBoard.paper)
             .then(if (edge != null) Modifier.border(4.dp, edge, radius) else Modifier)
             .then(
                 // The speaking mark is the loudest thing on the button while it
@@ -174,19 +201,31 @@ private fun ButtonCell(
                     bitmap = image,
                     contentDescription = null,
                     contentScale = ContentScale.Fit,
+                    // On the plate the drawing is the button, so the two tones
+                    // replace it rather than sitting on a square of white -
+                    // see HOME_TONES, and the note on `chrome` for why this one
+                    // button is not a word on paper.
+                    colorFilter = if (chrome) ColorFilter.colorMatrix(HOME_TONES) else null,
                     modifier =
                         Modifier
                             .weight(1f)
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(Vorlaut.metrics.radiusSm))
                             // A pictogram is a canvas, not a plane: AAC symbols are
-                            // drawn for white and need it in either scheme.
-                            .background(Color.White),
+                            // drawn for white and need it in either scheme. The
+                            // start key is the exception and is the reason the
+                            // sentence above says "pictogram": that white square
+                            // is exactly what makes a button read as a word.
+                            .then(if (chrome) Modifier else Modifier.background(Color.White)),
                 )
             } else {
                 Box(Modifier.weight(1f))
             }
-            button.label?.let {
+            // Not on the plate. The word is still in the package and still
+            // reaches a screen reader through describe() below - what goes is
+            // the drawing of it, because a key that navigates is read by where
+            // it sits and what it shows.
+            button.label?.takeIf { !chrome }?.let {
                 Txt(
                     it,
                     style =
@@ -224,6 +263,60 @@ private fun ButtonCell(
         if (speaking) Unit
     }
 }
+
+/**
+ * How a start key's picture is recoloured: a plain linear map from the
+ * drawing's luminance onto the two tones the sentence bar is drawn in,
+ * `out = light - (light - plate) * in`.
+ *
+ * Black in the pictogram becomes [VorlautBoard.icon] and white becomes
+ * [VorlautBoard.barPlate], so the drawing turns into strokes of light on the
+ * key rather than a black drawing on a white square. The builder puts the
+ * black-and-white variant of the symbol on this key for exactly this reason -
+ * ARASAAC's greyscale rendering, or METACOM's `SW` file - because a two-tone
+ * map only holds on a greyscale source and a coloured pictogram comes out
+ * tinted.
+ *
+ * **Not `invert()`.** Inverting takes the white interior of the house to pure
+ * black, which on a dark key reads as a hole cut through it rather than as a
+ * drawing on it. This map takes that same white to the key's own colour, so
+ * the interior simply is the key.
+ *
+ * Derived from the two tokens rather than written out as six numbers, so that
+ * a key and the bar it matches cannot drift apart: the offsets *are* the light
+ * tone, which is what `in = 0` has to come out as. The one thing that is not
+ * shared with the builder's own copy of this map is the units - Compose keeps
+ * Android's convention and applies the fifth column in 0..255, while the
+ * editor's feColorMatrix works in 0..1. The scale factors are ratios and are
+ * the same number in both; only the offsets differ, and only by 255.
+ */
+internal val HOME_TONES =
+    ColorMatrix(
+        floatArrayOf(
+            -(VorlautBoard.icon.red - VorlautBoard.barPlate.red),
+            0f,
+            0f,
+            0f,
+            VorlautBoard.icon.red * 255f,
+            0f,
+            -(VorlautBoard.icon.green - VorlautBoard.barPlate.green),
+            0f,
+            0f,
+            VorlautBoard.icon.green * 255f,
+            0f,
+            0f,
+            -(VorlautBoard.icon.blue - VorlautBoard.barPlate.blue),
+            0f,
+            VorlautBoard.icon.blue * 255f,
+            // Alpha untouched: the symbol's transparent ground stays
+            // transparent, and the key shows through it.
+            0f,
+            0f,
+            0f,
+            1f,
+            0f,
+        ),
+    )
 
 /** A cross over the whole face: this button is not going to do anything. */
 @Composable
