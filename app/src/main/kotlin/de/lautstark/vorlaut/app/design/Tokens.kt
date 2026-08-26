@@ -1,6 +1,5 @@
 package de.lautstark.vorlaut.app.design
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
@@ -48,29 +47,7 @@ data class VorlautColors(
     val danger: Color,
     val dangerInk: Color,
     val dangerSoft: Color,
-    val isDark: Boolean,
 )
-
-private val Light =
-    VorlautColors(
-        bg = Color(0xFFF9F9FB),
-        surface = Color(0xFFFFFFFF),
-        surface2 = Color(0xFFF0F0F4),
-        surface3 = Color(0xFFE6E5EC),
-        line = Color(0xFFDADAE0),
-        text = Color(0xFF1A1A1D),
-        textDim = Color(0xFF63616B),
-        textFaint = Color(0xFF6C6B74),
-        accent = Color(0xFF9B7BFF),
-        accentInk = Color(0xFF130B2A),
-        accentStrong = Color(0xFF7A57D7),
-        accentHover = Color(0xFF8E6DEF),
-        accentSoft = Color(0xFFF3F1FF),
-        danger = Color(0xFFAD332C),
-        dangerInk = Color(0xFFFFF6F4),
-        dangerSoft = Color(0xFFFFEBE8),
-        isDark = false,
-    )
 
 private val Dark =
     VorlautColors(
@@ -92,7 +69,6 @@ private val Dark =
         danger = Color(0xFFF17265),
         dangerInk = Color(0xFF330F0C),
         dangerSoft = Color(0xFF341B18),
-        isDark = true,
     )
 
 /**
@@ -189,7 +165,7 @@ data class VorlautType(
     val mono: TextStyle = TextStyle(fontSize = 12.5.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace),
 )
 
-private val LocalColors = staticCompositionLocalOf { Light }
+private val LocalColors = staticCompositionLocalOf { Dark }
 private val LocalMetrics = staticCompositionLocalOf { VorlautMetrics() }
 private val LocalType = staticCompositionLocalOf { VorlautType() }
 
@@ -211,12 +187,9 @@ object Vorlaut {
  * a product stops looking like its family.
  */
 @Composable
-fun VorlautTheme(
-    dark: Boolean = isSystemInDarkTheme(),
-    content: @Composable () -> Unit,
-) {
+fun VorlautTheme(content: @Composable () -> Unit) {
     CompositionLocalProvider(
-        LocalColors provides if (dark) Dark else Light,
+        LocalColors provides Dark,
         LocalMetrics provides VorlautMetrics(),
         LocalType provides VorlautType(),
         content = content,
