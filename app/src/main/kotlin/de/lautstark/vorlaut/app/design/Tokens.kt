@@ -52,10 +52,10 @@ data class VorlautColors(
 private val Dark =
     VorlautColors(
         bg = Color(0xFF161618),
-        surface = Color(0xFF1F1F22),
-        surface2 = Color(0xFF28282B),
-        surface3 = Color(0xFF323236),
-        line = Color(0xFF3A3A3E),
+        surface = Color(0xFF303033),
+        surface2 = Color(0xFF3D3D40),
+        surface3 = Color(0xFF49484D),
+        line = Color(0xFF7A797F),
         text = Color(0xFFEBEBF0),
         textDim = Color(0xFF9C9BA5),
         textFaint = Color(0xFF8F8E98),
