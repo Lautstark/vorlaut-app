@@ -31,6 +31,8 @@
     <string name="warnings_intro">This collection works. Only whoever built it can change this — the order below is the order it appears on the board.</string>
     <string name="no_warnings">Nothing is missing from this collection.</string>
 
+    <string name="page_back">Scroll the sentence back</string>
+    <string name="page_forward">Scroll the sentence forward</string>
     <string name="speak">Speak</string>
     <string name="undo">Undo</string>
     <string name="clear">Clear</string>

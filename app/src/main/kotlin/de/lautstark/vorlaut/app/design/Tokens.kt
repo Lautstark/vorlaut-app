@@ -96,6 +96,59 @@ private val Dark =
     )
 
 /**
+ * The board screen's own surfaces, which are not the theme's.
+ *
+ * This is the one screen in the family that does not follow light and dark. It
+ * has a dark case and light contents in either scheme, and these are the only
+ * literal colours in the app outside [VorlautColors].
+ *
+ * The reason is measurable rather than a taste. A board is a field of white and
+ * pale Fitzgerald tiles, and on the light palette's [VorlautColors.bg] those
+ * tiles sat at a contrast ratio of 1.05:1 — a rounding error, not a difference,
+ * so the whole screen swam. [ground] puts them at 10.9:1. Doing that only in
+ * the light scheme would give the board two appearances, so it does it always,
+ * which is also why nothing below is a `Color` looked up from the theme.
+ *
+ * Mirrors `docs/mocks/board.css` in Lautstark/design, where the same values and
+ * the same argument live.
+ */
+object VorlautBoard {
+    /** Behind everything. */
+    val ground = Color(0xFF3C3C44)
+
+    /** The sentence bar and its controls: one shade darker than [ground]. */
+    val barPlate = Color(0xFF24242A)
+
+    /** Under a pictogram, and under an entry in the bar. AAC symbols are drawn
+     *  for white and need it whatever else the screen is doing. */
+    val paper = Color(0xFFFFFFFF)
+
+    /** On [paper] and on any Fitzgerald tint. Never follows the scheme, because
+     *  neither does anything it is written on. */
+    val ink = Color(0xFF1A1A1D)
+
+    /** A bar control's glyph, live and dead. */
+    val icon = Color(0xFFEBEBF0)
+    val iconDead = Color(0xFF5B5A64)
+
+    /** A cell nothing sits in: a hole in the ground rather than a pale tile, so
+     *  that nothing which is not a button looks like one. */
+    val hole = Color(0x24000000)
+
+    /** The screen's edge. Smaller than [VorlautMetrics.screenMargin], which the
+     *  three list screens use — a dark border reads wider than a light one. */
+    val edge = 20.dp
+
+    /** Bar to grid. Larger than the gutter inside the grid on purpose: it is a
+     *  seam between two different surfaces, not one more gap between cells. */
+    val barGap = 14.dp
+
+    /** How much of the screen the bar takes. It was 132dp — 22% of a tablet, or
+     *  half a row of board. */
+    const val BAR_FRACTION = 0.13f
+}
+
+/**
  * Shape and spacing.
  *
  * [gap] is the one number that governs every gutter on the board: the outer
