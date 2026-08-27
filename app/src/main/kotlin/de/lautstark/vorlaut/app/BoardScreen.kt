@@ -398,7 +398,23 @@ private fun ButtonCell(
         if (marked) {
             Box(
                 Modifier
-                    .align(Alignment.TopEnd)
+                    // The corner the wedge left free.
+                    //
+                    // Both marks wanted the top right and the wedge takes its
+                    // corner out of the tile's shape, so the badge was clipped
+                    // by it: the notch removes everything within `side` of the
+                    // corner and the badge's inner corner sits 16dp from it.
+                    //
+                    // Moving the badge rather than dropping the wedge, because
+                    // the two are addressed to different people. The wedge
+                    // tells the child what the press does; the badge tells the
+                    // adult the package is broken. The adult is the one who can
+                    // look somewhere else.
+                    //
+                    // Never both corners: a button has one `onActivate`, so it
+                    // has at most one wedge, and the other corner is always
+                    // free.
+                    .align(if (wedge == Wedge.Onward) Alignment.TopStart else Alignment.TopEnd)
                     .size(22.dp)
                     .clip(RoundedCornerShape(11.dp))
                     .background(c.danger),
