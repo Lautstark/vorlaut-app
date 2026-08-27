@@ -24,19 +24,24 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.lautstark.vorlaut.app.design.Txt
@@ -281,23 +286,36 @@ private fun ButtonCell(
             }
         }
 
+    // The tile is the notched shape where there is a notch, so nothing is ever
+    // drawn in the corner to be painted over afterwards — see [NotchedTile].
+    val tile: Shape =
+        wedge?.let { NotchedTile(Vorlaut.metrics.radius, wedgeSide(cell), it == Wedge.Sound) }
+            ?: radius
+
     Box(
         Modifier
             .fillMaxSize()
-            .clip(radius)
-            .background(if (chrome) VorlautBoard.barPlate else fill ?: VorlautBoard.paper)
+            // The clip takes the notch too, and it has to. A pictogram carries
+            // its own white ground — AAC line art is drawn for white and needs
+            // it whatever the screen is doing — so the picture reaches into the
+            // corner behind the tile's own background. Cutting only the
+            // background leaves that white sitting in the notch.
+            .clip(tile)
+            .background(
+                color = if (chrome) VorlautBoard.barPlate else fill ?: VorlautBoard.paper,
+                shape = tile,
+            )
             // The plate is 1.41:1 against the ground and cannot be made to
             // clear 1.4.11's 3:1 by any darker shade — see chromeEdge, which
             // carries the whole argument and the measurement. The bar's four
             // controls wear the same hairline for the same reason.
             .then(if (chrome) Modifier.border(1.5.dp, VorlautBoard.chromeEdge, radius) else Modifier)
-            .then(if (edge != null) Modifier.border(4.dp, edge, radius) else Modifier)
-            .then(wedge?.let { Modifier.drawWedge(it, VorlautBoard.ground, wedgeSide(cell)) } ?: Modifier)
+            .then(if (edge != null) Modifier.border(4.dp, edge, tile) else Modifier)
             .then(
                 // The speaking mark is the loudest thing on the button while it
                 // lasts, because it answers "did it hear me" — the question a
                 // user asks first and cannot ask out loud.
-                if (speaking) Modifier.border(4.dp, c.accent, radius) else Modifier,
+                if (speaking) Modifier.border(4.dp, c.accent, tile) else Modifier,
             )
             // A disabled button still takes the press and visibly refuses it,
             // rather than behaving like a gap in the board.
@@ -455,57 +473,71 @@ private enum class Wedge { Sound, Onward }
 private fun wedgeSide(cell: Dp) = (cell.value * 0.17f).coerceIn(14f, 30f).dp
 
 /**
- * The mark itself: a right triangle in the cell's own corner.
+ * The tile with one corner taken off: a rounded rectangle whose top corner is a
+ * straight diagonal instead.
  *
- * In [VorlautBoard.ground], so the corner reads as cut away rather than drawn
- * on: what shows through is the board behind the tile, which is what a key
- * that leads somewhere else actually means. It also keeps the mark out of the
- * ink, so nothing on the cell competes with the word.
+ * **A shape rather than a triangle painted on afterwards, and that is the whole
+ * point.** Painting worked until you looked closely: the cell's rounded corner
+ * is drawn with antialiasing, the clip trims the paint at exactly that corner,
+ * and the half-covered pixels underneath survive as a pale arc traced through
+ * the notch. No amount of overshoot reaches them, because the clip removes the
+ * overshoot first. Not drawing the corner at all is the only version with
+ * nothing left to cover up.
  *
- * The colour is safe on every tile the format can produce, which is not luck:
- * a cell already has to clear 3:1 against the ground to be a visible cell at
- * all, so a notch of ground in it clears the same 3:1 by the same measurement.
- * Worst of the ten Fitzgerald fills is `place` at 4.64:1.
+ * In [VorlautBoard.ground]'s place, so to speak: what shows through the missing
+ * corner is the board behind the tile, which is what a key that leads somewhere
+ * else actually means. It also keeps the mark out of the ink, so nothing on the
+ * cell competes with the word.
  *
- * Drawn before the cell's padding is applied, so it reaches the true corner,
- * and after the clip, so the tile's rounding trims it.
+ * The contrast is the cell's own and needs no separate argument. A cell already
+ * has to clear 3:1 against the ground to be a visible cell at all, so a corner
+ * of ground taken out of it is legible by the same measurement. Worst of the
+ * ten Fitzgerald fills is `place` at 4.64:1.
  *
- * **It overshoots the tile, and that is the whole of why the cut looks cut.**
- * A triangle stopping exactly at the corner leaves the rounding's own
- * antialiased pixels outside it, and those pixels are the cell — so a hairline
- * of white traced the corner and the notch read as painted on rather than
- * taken out. Running the triangle past the edge puts both under the same clip,
- * which then blends ground into ground and leaves nothing to see.
- *
- * The overshoot keeps the diagonal exactly where it was. The cut is at 45
- * degrees, so pushing a point out by the same amount in x and y slides it
- * along that line rather than off it: the hypotenuse through
- * `(w - s, 0)` and `(w, s)` is `y = x - (w - s)`, and both overshot ends still
- * satisfy it.
+ * The cut corner is left square while the other three keep their radius. A
+ * rounded cut reads as a bite; a straight one reads as a clip, which is the
+ * thing being said.
  */
-private fun Modifier.drawWedge(
-    wedge: Wedge,
-    colour: Color,
-    side: Dp,
-) = drawWithContent {
-    drawContent()
-    val s = side.toPx()
-    // Past the rounding and past the edge stroke a bordered cell may carry.
-    val over = s / 2f
-    val path =
-        Path().apply {
-            if (wedge == Wedge.Onward) {
-                moveTo(size.width + over, -over)
-                lineTo(size.width - s - over, -over)
-                lineTo(size.width + over, s + over)
-            } else {
-                moveTo(-over, -over)
-                lineTo(s + over, -over)
-                lineTo(-over, s + over)
+private data class NotchedTile(
+    private val corner: Dp,
+    private val notch: Dp,
+    private val atStart: Boolean,
+) : Shape {
+    override fun createOutline(
+        size: Size,
+        layoutDirection: LayoutDirection,
+        density: Density,
+    ): Outline {
+        val r = with(density) { corner.toPx() }.coerceAtMost(minOf(size.width, size.height) / 2f)
+        val s = with(density) { notch.toPx() }.coerceAtMost(minOf(size.width, size.height))
+        val w = size.width
+        val h = size.height
+        val path =
+            Path().apply {
+                if (atStart) {
+                    moveTo(s, 0f)
+                    lineTo(w - r, 0f)
+                    arcTo(Rect(w - 2 * r, 0f, w, 2 * r), -90f, 90f, false)
+                    lineTo(w, h - r)
+                    arcTo(Rect(w - 2 * r, h - 2 * r, w, h), 0f, 90f, false)
+                    lineTo(r, h)
+                    arcTo(Rect(0f, h - 2 * r, 2 * r, h), 90f, 90f, false)
+                    lineTo(0f, s)
+                } else {
+                    moveTo(r, 0f)
+                    lineTo(w - s, 0f)
+                    lineTo(w, s)
+                    lineTo(w, h - r)
+                    arcTo(Rect(w - 2 * r, h - 2 * r, w, h), 0f, 90f, false)
+                    lineTo(r, h)
+                    arcTo(Rect(0f, h - 2 * r, 2 * r, h), 90f, 90f, false)
+                    lineTo(0f, r)
+                    arcTo(Rect(0f, 0f, 2 * r, 2 * r), 180f, 90f, false)
+                }
+                close()
             }
-            close()
-        }
-    drawPath(path, colour)
+        return Outline.Generic(path)
+    }
 }
 
 private fun describe(
