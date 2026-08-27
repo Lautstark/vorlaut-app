@@ -57,8 +57,8 @@ private val Dark =
         surface3 = Color(0xFF49484D),
         line = Color(0xFF7A797F),
         text = Color(0xFFEBEBF0),
-        textDim = Color(0xFF9C9BA5),
-        textFaint = Color(0xFF8F8E98),
+        textDim = Color(0xFFB6B5BF),
+        textFaint = Color(0xFFA8A6B0),
         accent = Color(0xFF9B7BFF),
         accentInk = Color(0xFF130B2A),
         // On a dark ground --accent-strong equals --accent, which design.md §4.2
