@@ -20,10 +20,10 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
     <group
-        android:scaleX="0.1833"
-        android:scaleY="0.1833"
-        android:translateX="7.07"
-        android:translateY="9.64">
+        android:scaleX="0.1444"
+        android:scaleY="0.1444"
+        android:translateX="17.03"
+        android:translateY="19.05">
         <!-- Sprechblase, als Kontur -->
         <path
             android:strokeColor="#FFFFFF"
