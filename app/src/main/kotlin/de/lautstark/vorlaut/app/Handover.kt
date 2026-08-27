@@ -116,8 +116,13 @@ class Handover(
      * as it should be — the person being handed the tablet deserves to be told
      * how to get out.
      */
-    fun pinToScreen(activity: Activity): Boolean =
-        try {
+    fun pinToScreen(activity: Activity): Boolean {
+        // Asking again while already pinned is not harmless: Android answers a
+        // repeat request by showing its confirmation afresh, so a board entered
+        // twice greeted the caregiver twice. knopfpost's tablet guards the same
+        // call the same way.
+        if (isPinnedToScreen()) return true
+        return try {
             activity.startLockTask()
             true
         } catch (e: IllegalStateException) {
@@ -130,6 +135,7 @@ class Handover(
             Log.w(TAG, "screen pinning not permitted", e)
             false
         }
+    }
 
     fun releaseScreen(activity: Activity) {
         runCatching { activity.stopLockTask() }

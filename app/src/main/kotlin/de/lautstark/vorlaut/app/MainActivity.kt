@@ -12,14 +12,18 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import de.lautstark.vorlaut.app.design.Vorlaut
 import de.lautstark.vorlaut.app.design.VorlautTheme
@@ -104,6 +108,23 @@ class MainActivity : ComponentActivity() {
                 } else {
                     handover.releaseScreen(this@MainActivity)
                 }
+            }
+
+            // And again whenever the app comes back to the front, because the
+            // route has not changed then and the effect above will not run. A
+            // tablet that was legitimately unpinned — the caregiver knew the
+            // gesture, or the system dropped it — otherwise stays unpinned for
+            // the rest of the day, and nothing on screen says so.
+            val onBoard by rememberUpdatedState(route == Route.Board)
+            DisposableEffect(Unit) {
+                val watcher =
+                    LifecycleEventObserver { _, event ->
+                        if (event == Lifecycle.Event.ON_RESUME && onBoard) {
+                            handover.pinToScreen(this@MainActivity)
+                        }
+                    }
+                lifecycle.addObserver(watcher)
+                onDispose { lifecycle.removeObserver(watcher) }
             }
 
             VorlautTheme {
