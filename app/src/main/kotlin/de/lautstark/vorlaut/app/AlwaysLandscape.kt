@@ -1,9 +1,7 @@
 package de.lautstark.vorlaut.app
 
 import android.content.Context
-import android.hardware.SensorManager
 import android.os.Build
-import android.view.OrientationEventListener
 import android.view.Surface
 import android.view.WindowManager
 import androidx.compose.foundation.background
@@ -15,62 +13,36 @@ import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import de.lautstark.vorlaut.app.design.VorlautBoard
-import kotlin.math.abs
 
 /**
- * How far past a boundary the tablet has to be tipped before the board accepts
- * a new quarter. Without it a tablet held at 45 degrees flickers between two
- * answers, which is worse than either of them.
- */
-private const val QUARTER_MARGIN = 35
-
-/**
- * The board, kept landscape and kept upright, whichever way the tablet is held.
+ * The board, nailed to the glass.
  *
- * Asking Android for landscape is the obvious way to do this and it no longer
- * works: Android 16 ignores a fixed `screenOrientation` on large screens, and
- * the property that opted out of that is gone at targetSdk 37, which is what
- * this app compiles against. Measured on a Galaxy Tab, where the request was
- * simply not honoured. So the turn is ours.
+ * It is drawn landscape, filling the screen, on the same pixels every time.
+ * Turning the tablet does not move it: held the right way round it is upright,
+ * held the other way round it is upside down, exactly as a sheet of paper taped
+ * to the screen would be. That is what a lock is. A board is a page whose shape
+ * and position a child learns, and the strongest version of that promise is one
+ * the device cannot interrupt.
  *
- * Keying it off the window's shape was not enough, and this is the part worth
- * knowing. A fixed quarter turn is fixed to the *tablet*, so the board rides
- * round with it and lands upside down half the time. What the turn has to
- * follow is gravity, and gravity is not something the window can be asked
- * about: with auto-rotate off — which is what anyone setting up a child's
- * tablet is told to do — the window never changes at all, however the tablet is
- * held.
+ * Asking Android for landscape would have been the obvious way and it no longer
+ * works: it ignores a fixed `screenOrientation` on large screens from Android
+ * 16, and the property that opted out of that is gone at targetSdk 37, which is
+ * what this app compiles against. Measured on a Galaxy Tab, where the request
+ * was simply not honoured.
  *
- * So two numbers, and the difference between them is the answer:
- *
- *  - `q`, which way up the tablet is being held, in quarter turns clockwise
- *    from its natural orientation. This comes off the accelerometer and is true
- *    whether or not Android is acting on it.
- *  - `r`, how far Android has already turned the window to compensate. With
- *    auto-rotate on this tracks `q` and the difference is zero; with it off it
- *    stays put and the difference is the whole tilt.
- *
- * The two count opposite ways round, which is measured rather than assumed: on
- * a tablet tipped one quarter clockwise Android reports `ROTATION_270`, not
- * `ROTATION_90`. So an untouched board sits at `q + r` quarter turns from
- * upright — zero whenever auto-rotate is doing its job, since the two then
- * cancel — and `-(q + r)` is what puts it back.
- *
- * The board is then forced landscape by one further quarter where that leaves
- * it portrait, always in the same direction, so that a sideways board is always
- * the same request: turn the tablet clockwise. Which way up it already is must
- * not change the answer, or the request stops being learnable.
+ * So the one thing that has to be undone is Android's own turning. The window
+ * is rotated by `r` quarters away from the tablet's natural orientation
+ * whenever auto-rotate acts, so `-r` puts the board back where it was, and one
+ * further quarter forces landscape wherever that leaves it portrait. The result
+ * is constant: on this tablet the board sits three quarters from natural in
+ * every one of the four cases, which is the whole point — there is nothing to
+ * work out from gravity, because nothing is supposed to follow gravity.
  *
  * Two things this cannot reach, both because they are not our window: anything
  * Android draws itself — the pinning notice, a toast, a permission sheet — and
@@ -88,7 +60,6 @@ fun AlwaysLandscape(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
-    val q = rememberTabletQuarter()
     val r = windowQuarter()
 
     Box(
@@ -98,11 +69,8 @@ fun AlwaysLandscape(
             .windowInsetsPadding(WindowInsets.safeDrawing),
     ) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
-            var turns = Math.floorMod(-(q + r), 4)
+            var turns = Math.floorMod(-r, 4)
             val windowIsLandscape = maxWidth >= maxHeight
-            // Landscape once turned, or one more quarter until it is. Always
-            // the same direction: the board being sideways is a request to turn
-            // the tablet, and the request has to be the same one every time.
             if (windowIsLandscape != (turns % 2 == 0)) turns = Math.floorMod(turns - 1, 4)
 
             if (turns == 0) {
@@ -127,39 +95,7 @@ fun AlwaysLandscape(
     }
 }
 
-/**
- * Which way up the tablet is being held: quarter turns clockwise from its
- * natural orientation, straight off the accelerometer.
- *
- * A tablet lying flat has no answer to give — [OrientationEventListener] says
- * so with `ORIENTATION_UNKNOWN` — and the last one it gave is kept, because a
- * board that reshuffles itself when somebody puts the tablet down on the table
- * is a board that has moved for no reason the person can see.
- */
-@Composable
-private fun rememberTabletQuarter(): Int {
-    val context = LocalContext.current
-    var quarter by remember { mutableIntStateOf(0) }
-    DisposableEffect(context) {
-        val listener =
-            object : OrientationEventListener(context, SensorManager.SENSOR_DELAY_NORMAL) {
-                override fun onOrientationChanged(degrees: Int) {
-                    if (degrees == ORIENTATION_UNKNOWN) return
-                    val next = ((degrees + 45) / 90) % 4
-                    if (next == quarter) return
-                    // Only once it is clearly inside the new quarter, not the
-                    // moment it crosses the line.
-                    val off = abs(degrees - next * 90).let { minOf(it, 360 - it) }
-                    if (off <= QUARTER_MARGIN) quarter = next
-                }
-            }
-        if (listener.canDetectOrientation()) listener.enable()
-        onDispose { listener.disable() }
-    }
-    return quarter
-}
-
-/** How far Android has already turned the window, in the same quarter turns. */
+/** How far Android has turned the window away from the tablet's natural orientation. */
 @Composable
 private fun windowQuarter(): Int {
     val context = LocalContext.current
