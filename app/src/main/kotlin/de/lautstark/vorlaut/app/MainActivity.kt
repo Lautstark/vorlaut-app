@@ -4,6 +4,8 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.view.WindowInsets
+import android.view.WindowInsetsController
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -105,8 +107,10 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(route) {
                 if (route == Route.Board) {
                     handover.pinToScreen(this@MainActivity)
+                    hideSystemBars()
                 } else {
                     handover.releaseScreen(this@MainActivity)
+                    showSystemBars()
                 }
             }
 
@@ -121,6 +125,7 @@ class MainActivity : ComponentActivity() {
                     LifecycleEventObserver { _, event ->
                         if (event == Lifecycle.Event.ON_RESUME && onBoard) {
                             handover.pinToScreen(this@MainActivity)
+                            hideSystemBars()
                         }
                     }
                 lifecycle.addObserver(watcher)
@@ -253,6 +258,40 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+    }
+
+    /**
+     * Takes the clock and the navigation bar off the board.
+     *
+     * They cost 112px at the top and 104px at the foot of a 1200px tablet — 18%
+     * of the height, on the one screen where height is what the grid is made
+     * of. On a 6x11 board that is the difference between cramped and legible,
+     * and a child does not need the battery percentage.
+     *
+     * Only the board. The three list screens keep theirs: an adult stands in
+     * front of those, the clock is useful there, and nothing on them is short
+     * of room.
+     *
+     * **This hides, it does not lock.** A swipe from either edge brings the bars
+     * back for a moment, which is exactly how the person holding the tablet
+     * reaches the way out — and the unpin gesture is unaffected either way.
+     * Nothing here adds to what pinning already does or does not guarantee.
+     *
+     * API 30 is where the controller arrived. Below it the bars stay, and
+     * `safeDrawing` in TalkerScreen keeps holding the grid clear of them, which
+     * is the same behaviour this app has had all along.
+     */
+    private fun hideSystemBars() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
+        window.insetsController?.apply {
+            systemBarsBehavior = WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            hide(WindowInsets.Type.systemBars())
+        }
+    }
+
+    private fun showSystemBars() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
+        window.insetsController?.show(WindowInsets.Type.systemBars())
     }
 
     private fun consumeIncoming(intent: Intent?): Uri? {
