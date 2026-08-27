@@ -468,7 +468,20 @@ private fun wedgeSide(cell: Dp) = (cell.value * 0.17f).coerceIn(14f, 30f).dp
  * Worst of the ten Fitzgerald fills is `place` at 4.64:1.
  *
  * Drawn before the cell's padding is applied, so it reaches the true corner,
- * and after the clip, so it takes the tile's own rounding.
+ * and after the clip, so the tile's rounding trims it.
+ *
+ * **It overshoots the tile, and that is the whole of why the cut looks cut.**
+ * A triangle stopping exactly at the corner leaves the rounding's own
+ * antialiased pixels outside it, and those pixels are the cell — so a hairline
+ * of white traced the corner and the notch read as painted on rather than
+ * taken out. Running the triangle past the edge puts both under the same clip,
+ * which then blends ground into ground and leaves nothing to see.
+ *
+ * The overshoot keeps the diagonal exactly where it was. The cut is at 45
+ * degrees, so pushing a point out by the same amount in x and y slides it
+ * along that line rather than off it: the hypotenuse through
+ * `(w - s, 0)` and `(w, s)` is `y = x - (w - s)`, and both overshot ends still
+ * satisfy it.
  */
 private fun Modifier.drawWedge(
     wedge: Wedge,
@@ -477,16 +490,18 @@ private fun Modifier.drawWedge(
 ) = drawWithContent {
     drawContent()
     val s = side.toPx()
+    // Past the rounding and past the edge stroke a bordered cell may carry.
+    val over = s / 2f
     val path =
         Path().apply {
             if (wedge == Wedge.Onward) {
-                moveTo(size.width, 0f)
-                lineTo(size.width - s, 0f)
-                lineTo(size.width, s)
+                moveTo(size.width + over, -over)
+                lineTo(size.width - s - over, -over)
+                lineTo(size.width + over, s + over)
             } else {
-                moveTo(0f, 0f)
-                lineTo(s, 0f)
-                lineTo(0f, s)
+                moveTo(-over, -over)
+                lineTo(s + over, -over)
+                lineTo(-over, s + over)
             }
             close()
         }
