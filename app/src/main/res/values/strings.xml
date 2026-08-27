@@ -18,7 +18,16 @@
     <string name="back">Zurück</string>
 
     <string name="empty_headline">Noch keine Sammlung auf diesem Gerät.</string>
-    <string name="empty_body">Eine Sammlung kommt als .obz-Datei aus dem Editor. Öffne sie aus den Dateien, teile sie mit dieser App, oder hol sie unten herein.</string>
+    <!--
+      Zwei Endungen, weil es zwei gibt. Der Editor nennt seine App-Ausgabe
+      .zip — nicht aus Nachlässigkeit, sondern weil Chrome auf Android sich
+      bei einer unbekannten Endung nach dem Medientyp richtet und eine als
+      application/zip deklarierte .obz gar nicht erst herunterlädt. Andere
+      AAC-Programme und die Talker-Ausgabe des Editors liefern .obz, und
+      diese App nimmt beides. Hier stand nur .obz, also genau die Endung der
+      zwei Ausgaben, die nicht für sie gedacht sind.
+    -->
+    <string name="empty_body">Eine Sammlung kommt als Datei aus dem Editor — .zip aus dessen App-Ausgabe, .obz aus anderen Programmen. Öffne sie aus den Dateien, teile sie mit dieser App, oder hol sie unten herein.</string>
     <string name="empty_footnote">Ohne Sammlung hat dieses Gerät nichts zu sagen.</string>
 
     <string name="not_redistributable">nicht weitergeben</string>

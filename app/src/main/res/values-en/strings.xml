@@ -7,7 +7,7 @@
     <string name="back">Back</string>
 
     <string name="empty_headline">No collection on this device yet.</string>
-    <string name="empty_body">A collection arrives as an .obz file from the editor. Open it from your files, share it to this app, or fetch it below.</string>
+    <string name="empty_body">A collection arrives as a file from the editor — .zip from its app export, .obz from other programs. Open it from your files, share it to this app, or fetch it below.</string>
     <string name="empty_footnote">Without a collection this device has nothing to say.</string>
 
     <string name="not_redistributable">not for passing on</string>
