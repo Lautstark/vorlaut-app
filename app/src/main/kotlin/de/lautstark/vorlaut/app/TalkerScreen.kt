@@ -249,10 +249,21 @@ private fun BarEntry(
 ) {
     val bmp = media.image(entry.imagePath, 192)
     val shape = RoundedCornerShape(7.dp)
+
+    /* An entry the sentence will not say.
+     *
+     * The device voice is not a fallback (see Speech), so a word whose button
+     * had no recording is passed over when Speak is pressed. Faded, it is the
+     * same "there but not available" the disabled buttons in the grid are drawn
+     * with, and the sentence can be read before it is heard.
+     */
+    val fade = if (entry.soundPath == null) 0.45f else 1f
+    val spelled = entry.display.orEmpty() + if (entry.soundPath == null) ", ohne Aufnahme" else ""
+
     if (bmp != null) {
         Image(
             bitmap = bmp,
-            contentDescription = entry.display,
+            contentDescription = spelled,
             contentScale = ContentScale.Fit,
             modifier =
                 Modifier
@@ -260,6 +271,7 @@ private fun BarEntry(
                     .aspectRatio(1f)
                     .clip(shape)
                     .background(VorlautBoard.paper)
+                    .alpha(fade)
                     .padding(4.dp),
         )
     } else {
@@ -272,6 +284,8 @@ private fun BarEntry(
                 .widthIn(min = 62.dp)
                 .clip(shape)
                 .background(VorlautBoard.paper)
+                .alpha(fade)
+                .semantics { contentDescription = spelled }
                 .padding(horizontal = 14.dp),
             contentAlignment = Alignment.Center,
         ) {

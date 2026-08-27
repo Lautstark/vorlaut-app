@@ -69,9 +69,9 @@
     <string name="w_image_missing">A picture is missing. The button shows its label only.</string>
     <string name="w_image_oversized">A picture is too large to show, so the button has none.</string>
     <string name="w_image_undecodable">A picture could not be read, so the button has none.</string>
-    <string name="w_sound_missing">A recording is missing. The button speaks in the device voice.</string>
-    <string name="w_sound_undecodable">A recording could not be read. The button speaks in the device voice.</string>
-    <string name="w_sound_too_long">A recording is longer than 30 seconds. The button speaks in the device voice.</string>
+    <string name="w_sound_missing">A recording is missing. The button stays silent and is marked.</string>
+    <string name="w_sound_undecodable">A recording could not be read. The button stays silent and is marked.</string>
+    <string name="w_sound_too_long">A recording is longer than 30 seconds. The button stays silent and is marked.</string>
     <string name="w_action_unsupported">This button asks for something this viewer cannot do, so it is switched off.</string>
     <string name="w_button_missing">The board has a gap where a button was meant to be.</string>
     <string name="w_path_normalization">A file inside the collection is named unusually. It was found anyway.</string>

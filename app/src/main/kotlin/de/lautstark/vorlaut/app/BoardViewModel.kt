@@ -26,7 +26,7 @@ import kotlinx.coroutines.withContext
 class BoardViewModel(
     application: Application,
 ) : AndroidViewModel(application) {
-    private val speech = Speech(application)
+    private val speech = Speech()
     private var bar = MessageBar()
 
     private val _state = MutableStateFlow(BoardUiState())
@@ -67,8 +67,6 @@ class BoardViewModel(
         warnings: List<ImportWarning>,
     ) {
         bar = MessageBar()
-        val root = boardPackage.boards.firstOrNull { it.id == boardPackage.rootBoardId }
-        speech.configureVoice(boardPackage.ttsVoice, root?.locale)
         _state.value =
             BoardUiState(
                 boardPackage = boardPackage,
@@ -109,12 +107,12 @@ class BoardViewModel(
             return
         }
 
-        val spoken = bar.press(button)
+        bar.press(button)
         val entries = bar.contents()
 
         when (action) {
             OnActivate.Append, OnActivate.SpeakImmediately, is OnActivate.AppendThenNavigate -> {
-                // The button's own voice: its clip if it has one, synthesis if not.
+                // The button's own voice: its clip, or silence if it has none.
                 //
                 // A carrying button speaks like the word button it also is, and
                 // the speech is deliberately not stopped for the navigation that
@@ -125,11 +123,12 @@ class BoardViewModel(
             }
 
             OnActivate.SpeakBar -> {
-                // The bar has no clip of its own. Speaking a composed sentence is
-                // always synthesis, even when every entry in it came from a button
-                // that had a recording — so the speak button carries the same
-                // synthesising mark as any other button using the device voice.
-                spoken?.let { speech.speak(button.id, it) }
+                // A `:speak` button in the grid is the bar's speak control put on
+                // the board, and says the sentence the same way: each entry in
+                // the voice it was recorded in. This handed the joined line to
+                // the device voice, which the bar's own control stopped doing and
+                // this was never changed with it.
+                speakBar()
             }
 
             else -> {
@@ -168,21 +167,16 @@ class BoardViewModel(
         }
 
     /**
-     * SPEC.md 9.2: a clip is played; a button whose audio was promised and is
-     * missing falls back to synthesis and is already marked degraded. A button
-     * that never had a clip also synthesises, and is not marked — that is a
-     * TTS-only board working as designed.
+     * SPEC.md 9.2's clip, and none of its fallback.
+     *
+     * A button with no recording — one that never had one, or one whose file the
+     * package lost — is silent, and the grid marks it as having no voice.
+     * Pressing it still stops whatever was sounding, because a press that leaves
+     * the previous word playing reads as if the wrong button spoke.
      */
     private fun utter(button: Button) {
-        val source = button.audio
-        if (source is AudioSource.Recorded) {
-            val bytes = media.audio(source.path)
-            if (bytes != null) {
-                speech.playClip(button.id, bytes)
-                return
-            }
-        }
-        button.spokenText?.let { speech.speak(button.id, it) }
+        val bytes = (button.audio as? AudioSource.Recorded)?.let { media.audio(it.path) }
+        if (bytes == null) speech.stop() else speech.playClip(button.id, bytes)
     }
 
     /**
@@ -194,28 +188,14 @@ class BoardViewModel(
      * belong, so that a fifteen-cell board does not spend three of its cells on
      * punctuation.
      *
-     * Each entry is played from the recording it was pressed on, and only the
-     * entries that never had one fall to the device voice. Handing the joined
-     * text to synthesis instead — which is what this did — spoke a smoother
-     * sentence in a voice that was audibly not the buttons', and a person who
-     * has just heard three recorded words does not expect the fourth reading of
-     * them to be a stranger.
+     * Each entry is played from the recording it was pressed on. An entry that
+     * has none is passed over rather than read out by the device voice — the
+     * word is missing from the sentence either way, and the bar draws it faded
+     * so that it is missing visibly rather than only audibly.
      */
     fun speakBar() {
-        val items =
-            bar.contents().mapNotNull { entry ->
-                val clip = entry.soundPath?.let { media.audio(it) }
-                when {
-                    clip != null -> Speech.Utterance.Clip(clip)
-
-                    !entry.spoken.isNullOrBlank() -> Speech.Utterance.Synth(entry.spoken!!)
-
-                    // An entry with neither is silent rather than a gap in a
-                    // sentence that stops half way.
-                    else -> null
-                }
-            }
-        if (items.isNotEmpty()) speech.speakSequence(items)
+        val clips = bar.contents().mapNotNull { entry -> entry.soundPath?.let { media.audio(it) } }
+        if (clips.isEmpty()) speech.stop() else speech.speakSequence(clips)
     }
 
     fun undo() {
@@ -246,9 +226,7 @@ data class BoardUiState(
     val board: Board?
         get() = boardPackage?.boards?.firstOrNull { it.id == currentBoardId }
 
-    /** True while this button is speaking with the device voice rather than a clip. */
-    fun isSynthesising(button: Button): Boolean = (speaking as? Speech.Speaking.Synthesised)?.buttonId == button.id
-
+    /** True while this button's own recording is playing. */
     fun isPlayingClip(button: Button): Boolean = (speaking as? Speech.Speaking.Clip)?.buttonId == button.id
 
     /**
