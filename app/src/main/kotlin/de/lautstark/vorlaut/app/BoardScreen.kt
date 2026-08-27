@@ -139,20 +139,34 @@ fun BoardScreen(
                 Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(gap)) {
                     row.forEachIndexed { column, cellId ->
                         if (apart && column == 1) Spacer(Modifier.width(gap))
+                        // A cell is empty three ways — the grid holds null, the
+                        // id names no button, or the button is hidden — and all
+                        // three keep their place rather than shifting
+                        // everything after them.
+                        val held = byId[cellId]
                         Box(
                             Modifier
                                 .weight(1f)
                                 .fillMaxSize()
-                                .clip(RoundedCornerShape(Vorlaut.metrics.radius))
-                                .background(VorlautBoard.hole),
+                                // Only where there is nothing. The hole used to
+                                // be painted under every slot, filled ones
+                                // included, where it was invisible under the
+                                // tile — until a tile grew a notch and the hole
+                                // was what showed through it, a shade darker
+                                // than the gutter either side. What a notch
+                                // has to show is the board, and the board is
+                                // the ground.
+                                .then(
+                                    if (held == null) {
+                                        Modifier
+                                            .clip(RoundedCornerShape(Vorlaut.metrics.radius))
+                                            .background(VorlautBoard.hole)
+                                    } else {
+                                        Modifier
+                                    },
+                                ),
                         ) {
-                            // A cell is empty three ways — the grid holds null,
-                            // the id names no button, or the button is hidden —
-                            // and all three keep their place rather than
-                            // shifting everything after them.
-                            byId[cellId]?.let {
-                                ButtonCell(it, state, media, cell, targetPx, onPress)
-                            }
+                            held?.let { ButtonCell(it, state, media, cell, targetPx, onPress) }
                         }
                     }
                 }
