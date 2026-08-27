@@ -62,7 +62,7 @@ class Speech(
     }
 
     private var onStateChange: (Speaking) -> Unit = {}
-    private var player: MediaPlayer? = null
+    private var player: Ahead? = null
 
     /* The sentence being said, one utterance at a time. `generation` is what
        makes stop() final: a clip that finishes after it, or a synthesis whose
@@ -72,6 +72,8 @@ class Speech(
     private var queue: List<Utterance> = emptyList()
     private var at = 0
     private var generation = 0
+    private var ahead: Ahead? = null
+    private var aheadAt = -1
     private var awaiting: String? = null
     private var onSynthDone: (() -> Unit)? = null
 
@@ -144,27 +146,63 @@ class Speech(
         buttonId: String?,
         bytes: ByteArray,
         onDone: () -> Unit,
+    ) = play(Ahead(bytes, onDone), buttonId)
+
+    private fun play(
+        clip: Ahead,
+        buttonId: String?,
     ) {
-        val source =
-            object : MediaDataSource() {
-                override fun readAt(
-                    position: Long,
-                    buffer: ByteArray,
-                    offset: Int,
-                    size: Int,
-                ): Int {
-                    if (position >= bytes.size) return -1
-                    val length = minOf(size.toLong(), bytes.size - position).toInt()
-                    System.arraycopy(bytes, position.toInt(), buffer, offset, length)
-                    return length
+        player?.release()
+        player = clip
+        clip.start {
+            clip.player.start()
+            // A sentence marks nothing: the entries are in the bar, not on the
+            // board, and there is no cell to light.
+            if (buttonId != null) report(Speaking.Clip(buttonId))
+        }
+    }
+
+    /**
+     * One clip, made ready before its turn.
+     *
+     * Preparing a MediaPlayer is where the pause between two snippets of a
+     * spoken sentence came from: the decoder was handed the next clip only once
+     * the one before it had finished, so every word paid that setup again, in
+     * silence. A player is now built and prepared while the clip before it is
+     * still sounding, and starts the moment its turn comes.
+     */
+    private class Ahead(
+        bytes: ByteArray,
+        private val onDone: () -> Unit,
+    ) {
+        val player = MediaPlayer()
+
+        private var ready = false
+        private var failed = false
+        private var started = false
+        private var over = false
+        private var begin: (() -> Unit)? = null
+
+        init {
+            val source =
+                object : MediaDataSource() {
+                    override fun readAt(
+                        position: Long,
+                        buffer: ByteArray,
+                        offset: Int,
+                        size: Int,
+                    ): Int {
+                        if (position >= bytes.size) return -1
+                        val length = minOf(size.toLong(), bytes.size - position).toInt()
+                        System.arraycopy(bytes, position.toInt(), buffer, offset, length)
+                        return length
+                    }
+
+                    override fun getSize(): Long = bytes.size.toLong()
+
+                    override fun close() = Unit
                 }
-
-                override fun getSize(): Long = bytes.size.toLong()
-
-                override fun close() = Unit
-            }
-        player =
-            MediaPlayer().apply {
+            player.apply {
                 setAudioAttributes(
                     AudioAttributes
                         .Builder()
@@ -173,9 +211,13 @@ class Speech(
                         .build(),
                 )
                 setDataSource(source)
-                setOnCompletionListener { onDone() }
+                setOnCompletionListener { finish() }
                 setOnErrorListener { _, _, _ ->
-                    onDone()
+                    failed = true
+                    // A clip that fails before its turn stays quiet about it:
+                    // reporting done now would walk the sentence on while the
+                    // word before it is still being said. [start] picks it up.
+                    if (started) finish()
                     false
                 }
                 // prepareAsync, not prepare. Preparing synchronously decodes on
@@ -186,13 +228,38 @@ class Speech(
                 // press again, and the button is marked as speaking only once it
                 // actually is.
                 setOnPreparedListener {
-                    it.start()
-                    // A sentence marks nothing: the entries are in the bar, not
-                    // on the board, and there is no cell to light.
-                    if (buttonId != null) report(Speaking.Clip(buttonId))
+                    ready = true
+                    begin?.let { go ->
+                        begin = null
+                        go()
+                    }
                 }
                 prepareAsync()
             }
+        }
+
+        /** Plays now if the decoder is ready, and otherwise the moment it is. */
+        fun start(go: () -> Unit) {
+            started = true
+            when {
+                failed -> finish()
+                ready -> go()
+                else -> begin = go
+            }
+        }
+
+        fun release() {
+            begin = null
+            over = true
+            runCatching { if (player.isPlaying) player.stop() }
+            player.release()
+        }
+
+        private fun finish() {
+            if (over) return
+            over = true
+            onDone()
+        }
     }
 
     /** Synthesises [text]. Used only where a button has no clip of its own. */
@@ -215,14 +282,37 @@ class Speech(
      *
      * The cost is audible and is the point of the trade: each word was recorded
      * on its own, so the sentence comes out word by word rather than as one
-     * breath.
+     * breath. What is left between the words is the recordings' own edges —
+     * the decoder is no longer waited for, and neighbouring synthesised entries
+     * are spoken together.
      */
     fun speakSequence(items: List<Utterance>) {
         stop()
         if (items.isEmpty()) return
-        queue = items
+        queue = joinSynth(items)
         at = 0
         step(generation)
+    }
+
+    /**
+     * Neighbouring synthesised entries are said in one breath.
+     *
+     * Only the recorded voice has a reason to stop between words; handing the
+     * device voice one utterance per entry made it stop too, and each stop cost
+     * the engine's start-up again. Nothing about which voice says what changes —
+     * a recording still interrupts the run it sits in.
+     */
+    private fun joinSynth(items: List<Utterance>): List<Utterance> {
+        val joined = mutableListOf<Utterance>()
+        for (item in items) {
+            val last = joined.lastOrNull()
+            if (item is Utterance.Synth && last is Utterance.Synth) {
+                joined[joined.lastIndex] = Utterance.Synth("${last.text} ${item.text}")
+            } else {
+                joined += item
+            }
+        }
+        return joined
     }
 
     private fun step(mine: Int) {
@@ -231,13 +321,50 @@ class Speech(
         if (item == null) {
             queue = emptyList()
             at = 0
+            dropAhead()
             report(Speaking.Silent)
             return
         }
         when (item) {
-            is Utterance.Clip -> startClip(null, item.bytes) { advance(mine) }
-            is Utterance.Synth -> if (!startSynth(null, item.text)) advance(mine) else Unit
+            is Utterance.Clip -> {
+                play(takeAhead(at) ?: Ahead(item.bytes) { advance(mine) }, null)
+            }
+
+            is Utterance.Synth -> {
+                if (!startSynth(null, item.text)) {
+                    advance(mine)
+                    return
+                }
+            }
         }
+        // The clip after this one is decoded while this one sounds, so its turn
+        // costs nothing but the switch. Synthesis cannot be started early — it
+        // would be heard — so only clips are got ready.
+        (queue.getOrNull(at + 1) as? Utterance.Clip)?.let { next ->
+            if (aheadAt != at + 1) {
+                dropAhead()
+                ahead = Ahead(next.bytes) { advance(mine) }
+                aheadAt = at + 1
+            }
+        }
+    }
+
+    /** The player prepared for [index], if that is the one waiting. */
+    private fun takeAhead(index: Int): Ahead? {
+        val ready = ahead?.takeIf { aheadAt == index }
+        if (ready == null) {
+            dropAhead()
+            return null
+        }
+        ahead = null
+        aheadAt = -1
+        return ready
+    }
+
+    private fun dropAhead() {
+        ahead?.release()
+        ahead = null
+        aheadAt = -1
     }
 
     private fun advance(mine: Int) {
@@ -282,10 +409,8 @@ class Speech(
         at = 0
         awaiting = null
         onSynthDone = null
-        player?.run {
-            runCatching { if (isPlaying) stop() }
-            release()
-        }
+        dropAhead()
+        player?.release()
         player = null
         if (ttsReady) tts.stop()
         report(Speaking.Silent)
