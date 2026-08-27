@@ -71,10 +71,17 @@
     <string name="pinning_off">Off. Home and Overview still leave the board — that can only be changed in Android\'s settings, not here.</string>
     <string name="pin_remove_title">Remove the PIN</string>
     <string name="pin_remove_body">Enter the current PIN. After that the board can be left without one.</string>
-    <string name="menu_open">Open</string>
-    <string name="menu_warnings">Warnings</string>
     <string name="menu_remove">Remove</string>
     <string name="remove_title">Remove “%1$s”</string>
     <string name="remove_body">The collection is deleted from this device — every board, picture and recording in it. The file it came from is untouched.</string>
     <string name="remove_confirm">Remove</string>
+
+    <string name="opens_next">opens next</string>
+    <string name="reading_file">Reading the file …</string>
+    <string name="dismiss_notice">Dismiss this message</string>
+    <string name="warnings_title">Warnings · %1$s</string>
+    <string name="done">Done</string>
+    <string name="warning_at_package">whole collection · %1$s</string>
+    <string name="warning_at_board">board %1$s · %2$s</string>
+    <string name="warning_at_button">board %1$s · button %2$s · %3$s</string>
 </resources>

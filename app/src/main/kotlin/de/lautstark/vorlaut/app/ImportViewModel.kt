@@ -44,6 +44,18 @@ class ImportViewModel(
         }
     }
 
+    /**
+     * Puts the outcome line away.
+     *
+     * It used to stay until the next import or removal replaced it, which is
+     * right for a refusal and wrong for "„Alltag zu Hause“ hinzugefügt." — that
+     * one sat at the top of the list until something else happened, sometimes
+     * for days.
+     */
+    fun dismissNotice() {
+        _state.value = _state.value.copy(lastOutcome = null, readError = null)
+    }
+
     fun importFrom(uri: Uri) {
         _state.value = _state.value.copy(busy = true, lastOutcome = null, readError = null)
         viewModelScope.launch {

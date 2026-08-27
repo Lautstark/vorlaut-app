@@ -2,7 +2,6 @@ package de.lautstark.vorlaut.app
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -54,7 +53,14 @@ fun SettingsScreen(
     Column(
         modifier.fillMaxSize().background(c.bg).windowInsetsPadding(WindowInsets.safeDrawing),
     ) {
-        AppBar(where = stringResource(R.string.settings))
+        // Zurück in the bar, where it is already in view on arrival. It sat
+        // below two cards at the foot, which is behind the content rather than
+        // beside it — and on a screen the device's own Back button did not
+        // leave, it closed the app instead (MainActivity now handles that too).
+        AppBar(
+            where = stringResource(R.string.settings),
+            trailing = { Btn(stringResource(R.string.back), onBack, tier = BtnTier.Normal) },
+        )
 
         Column(
             Modifier
@@ -104,10 +110,7 @@ fun SettingsScreen(
             }
         }
 
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = Vorlaut.metrics.screenMargin, vertical = 20.dp),
-            horizontalArrangement = Arrangement.End,
-        ) { Btn(stringResource(R.string.back), onBack, tier = BtnTier.Normal) }
+        Box(Modifier.size(20.dp))
     }
 }
 
