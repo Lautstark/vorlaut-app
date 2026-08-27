@@ -71,7 +71,13 @@ fun AlwaysLandscape(
         BoxWithConstraints(Modifier.fillMaxSize()) {
             var turns = Math.floorMod(-r, 4)
             val windowIsLandscape = maxWidth >= maxHeight
-            if (windowIsLandscape != (turns % 2 == 0)) turns = Math.floorMod(turns - 1, 4)
+            // Added rather than subtracted, and it matters: the two are the two
+            // ways round a landscape board can be nailed on, and one of them is
+            // upside down for the whole life of the tablet. This is the one
+            // where a tablet reporting ROTATION_90 -- an ordinary landscape
+            // hold, and what a Galaxy Tab reports when it is picked up -- needs
+            // no turn from us at all.
+            if (windowIsLandscape != (turns % 2 == 0)) turns = Math.floorMod(turns + 1, 4)
 
             if (turns == 0) {
                 content()
