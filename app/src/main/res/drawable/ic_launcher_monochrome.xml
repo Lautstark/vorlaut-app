@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The mark for a themed icon, where the launcher tints everything one colour.
+
+  Same geometry and same inset as ic_launcher_foreground, with one change that
+  the tinting forces: the bubble is a stroke rather than a fill. Filled, the
+  eye, the wink and the mouth would be tinted the same colour as the bubble
+  they sit in, and the whole thing would come out a blob. Outlined, the face
+  keeps its three marks and the mark stays the mark.
+
+  The stroke is 26, which is the weight the wink already carries in the source.
+  Two line weights in a drawing this small is one too many.
+
+  The colour here is what the launcher replaces, not what anybody sees — a
+  monochrome layer is tinted whole, so it is drawn opaque and left alone.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:scaleX="0.1833"
+        android:scaleY="0.1833"
+        android:translateX="7.07"
+        android:translateY="9.64">
+        <!-- Sprechblase, als Kontur -->
+        <path
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="26"
+            android:strokeLineJoin="round"
+            android:pathData="M128,76 H384 Q436,76 436,128 V272 Q436,324 384,324 H314 L256,408 L198,324 H128 Q76,324 76,272 V128 Q76,76 128,76 Z" />
+        <!-- offenes Auge -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M222,174 A22,22 0 1,1 178,174 A22,22 0 1,1 222,174 Z" />
+        <!-- Zwinkern -->
+        <path
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="26"
+            android:strokeLineCap="round"
+            android:pathData="M290,174 A22,22 0 0,1 334,174" />
+        <!-- offener Mund -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M302,256 A46,38 0 1,1 210,256 A46,38 0 1,1 302,256 Z" />
+    </group>
+</vector>

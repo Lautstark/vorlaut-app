@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The plate under the launcher icon.
+
+  White, which is what icon-512.png in Lautstark/vorlaut already puts there and
+  the reason it puts it there: a launcher wants an opaque square and masks it
+  itself. It is deliberately not the app's dark background — the mark is a
+  purple bubble with white in it, and on a dark plate the white would be doing
+  two jobs at once.
+-->
+<resources>
+    <color name="ic_launcher_background">#FFFFFF</color>
+</resources>

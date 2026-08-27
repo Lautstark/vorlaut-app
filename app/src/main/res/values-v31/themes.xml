@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The splash screen, which from Android 12 every app has whether it declares one
+  or not: the system draws android:icon on the window background while the
+  process starts. Undeclared, that was the stock ic_menu_agenda on dark, which
+  is the placeholder this replaces.
+
+  The background is the app's own #161618 rather than the icon's white plate, so
+  the splash hands over to a dark board without a white frame in between. That
+  is also why the icon here is the foreground layer and not @mipmap/ic_launcher:
+  the plate belongs to the launcher, which demands one, and drawing it here
+  would put a white disc on the way in. The foreground already carries the inset
+  that both masks want, so it is one drawable in both places rather than two
+  that have to be kept the same size by hand.
+
+  windowSplashScreenIconBackgroundColor is deliberately unset. Left alone, the
+  system draws the icon straight onto the background; setting it would add the
+  very disc the previous paragraph is avoiding.
+-->
+<resources>
+    <style name="Theme.Vorlaut" parent="Base.Theme.Vorlaut">
+        <item name="android:windowSplashScreenBackground">#161618</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+    </style>
+</resources>

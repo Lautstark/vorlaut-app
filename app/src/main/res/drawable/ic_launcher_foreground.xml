@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  vorlaut's mark, sized for a mask.
+
+  The geometry is path for path out of public/icon.svg in Lautstark/vorlaut, so
+  the two cannot drift apart without somebody noticing. What is added here is
+  the inset, and both places this drawable is used need the same one:
+
+  - an adaptive launcher icon is a 108dp canvas of which a launcher may keep as
+    little as the central 72dp, as a circle, a squircle or a rounded square;
+  - the Android 12 splash screen masks its icon to a circle over the middle two
+    thirds as well.
+
+  So the art is scaled to 66dp — 0.1833 is 66/360, where 360 is how wide the
+  drawing actually is — and centred on the art's own middle rather than on the
+  512 box's. The bubble's tail hangs below centre, so centring the box instead
+  sits the mark high in every mask on the market. The translation puts the art's
+  centre (256, 242) at the canvas centre (54, 54).
+
+  Plateless, like the favicon in that repository and unlike the two PNGs beside
+  it. Those carry a white plate because a launcher wants an opaque square; the
+  launcher gets that from the <background> layer here, and the splash must not
+  get it at all — a white disc on the way into a screen that is entirely dark.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:scaleX="0.1833"
+        android:scaleY="0.1833"
+        android:translateX="7.07"
+        android:translateY="9.64">
+        <!-- Sprechblase -->
+        <path
+            android:fillColor="#9B7BFF"
+            android:pathData="M128,76 H384 Q436,76 436,128 V272 Q436,324 384,324 H314 L256,408 L198,324 H128 Q76,324 76,272 V128 Q76,76 128,76 Z" />
+        <!-- offenes Auge -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M222,174 A22,22 0 1,1 178,174 A22,22 0 1,1 222,174 Z" />
+        <!-- Zwinkern -->
+        <path
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="26"
+            android:strokeLineCap="round"
+            android:pathData="M290,174 A22,22 0 0,1 334,174" />
+        <!-- offener Mund -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M302,256 A46,38 0 1,1 210,256 A46,38 0 1,1 302,256 Z" />
+    </group>
+</vector>
