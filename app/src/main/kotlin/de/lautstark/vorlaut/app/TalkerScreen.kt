@@ -467,9 +467,15 @@ private fun Chevron(
 /**
  * Hold to leave the board.
  *
- * The visible mark is 6dp wide; the target around it is the full height of the
- * bar and 18dp across. A 6dp button would be a cruelty — a 6dp mark on a target
- * a hand can find is a handle, which is what it should read as.
+ * The visible mark is 6dp wide and as tall as the bar; the target around it is
+ * that height and 18dp across. A 6dp button would be a cruelty — a 6dp mark on
+ * a target a hand can find is a handle, which is what it should read as.
+ *
+ * It ran to a fixed 46dp before, centred, which on a tablet is about half the
+ * bar: a short stroke floating beside five full-height controls reads as
+ * something left over rather than as the edge of the row. Full height puts it
+ * on the same line as everything else up there, and the ring it fills over
+ * gets the whole distance to say how long the hold is.
  */
 @Composable
 private fun ExitHandle(
@@ -513,9 +519,9 @@ private fun ExitHandle(
     ) {
         Canvas(Modifier.fillMaxSize()) {
             val pill = 6.dp.toPx()
-            val h = 46.dp.toPx()
+            val h = size.height
             val left = (size.width - pill) / 2f
-            val top = (size.height - h) / 2f
+            val top = 0f
             val radius = CornerRadius(pill / 2f)
 
             drawRoundRect(
