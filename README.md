@@ -133,6 +133,16 @@ Wording below is One UI 8 / Android 16.
 After a reboot somebody has to tap the icon once — the app does not start
 itself. Pinning re-engages on its own as soon as the board is showing.
 
+**Orientation is the device's, not the app's.** A board is drawn for a landscape
+screen, but the app cannot ask for one: Android 16 ignores a fixed
+`screenOrientation` on large screens, and the property that opted out of that is
+gone at targetSdk 37, which is what this app compiles against. Measured on a
+Galaxy Tab, not inferred. What the app does instead is keep the board's shape —
+in a portrait window the grid stops stretching, centres itself and leaves ground
+above and below, rather than becoming a column of tall slots. It is still worth
+turning **auto-rotate off** with the tablet held in landscape, so a tablet lying
+flat on a table does not decide for itself.
+
 ## Licence
 
 MIT. See [`LICENSE`](LICENSE).
