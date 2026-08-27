@@ -7,6 +7,17 @@ import android.os.Handler
 import android.os.Looper
 
 /**
+ * How long an interrupted word takes to get out of the way, and in how many
+ * steps.
+ *
+ * Short enough that the next word is not waiting on it — the two overlap for
+ * less than a syllable — and long enough that the waveform reaches zero instead
+ * of being cut off at whatever sample it had got to, which is what clicks.
+ */
+private const val FADE_MILLIS = 42L
+private const val FADE_STEPS = 6
+
+/**
  * Everything that makes a sound: the clips the builder recorded, and nothing
  * else.
  *
@@ -143,12 +154,28 @@ class Speech {
         }
     }
 
+    /**
+     * Silence, now — but not mid-sample.
+     *
+     * A press while a word is still sounding stops that word, and it has to:
+     * the alternative is a queue, and a queue takes the sound away from the
+     * press that caused it. Someone presses "Trinken" and hears "Essen",
+     * which is the one thing a board must never do. [speakSequence] is where
+     * words are heard in order, and that is the sentence's own control.
+     *
+     * What was wrong was not the stopping but how it sounded. Releasing a
+     * MediaPlayer mid-word cuts the waveform at whatever sample it had reached,
+     * which is a click and reads as the device breaking off rather than as the
+     * next word taking over. So the outgoing word ducks away over
+     * [FADE_MILLIS] instead, and the new one starts at once — the overlap is
+     * shorter than a syllable and costs the press nothing.
+     */
     fun stop() {
         generation += 1
         queue = emptyList()
         at = 0
         dropAhead()
-        player?.release()
+        player?.releaseFading(main)
         player = null
         report(Speaking.Silent)
     }
@@ -246,6 +273,45 @@ class Speech {
             over = true
             runCatching { if (player.isPlaying) player.stop() }
             player.release()
+        }
+
+        /**
+         * The same end, reached quietly: the volume walks down and the player
+         * is released at the bottom.
+         *
+         * `over` is set before the first step rather than at the last, so a
+         * clip that happens to reach its own end while fading does not report
+         * itself finished and walk a sentence on that nobody is waiting for.
+         *
+         * A clip that never started, or whose decoder is not ready, has nothing
+         * to fade and goes straight out — and every call into the player is
+         * guarded, because the one thing certain about a MediaPlayer being torn
+         * down on a timer is that it will sometimes already be gone.
+         */
+        fun releaseFading(main: Handler) {
+            begin = null
+            over = true
+            val sounding = runCatching { started && ready && player.isPlaying }.getOrDefault(false)
+            if (!sounding) {
+                release()
+                return
+            }
+            var left = FADE_STEPS
+            main.postDelayed(
+                object : Runnable {
+                    override fun run() {
+                        left -= 1
+                        if (left <= 0) {
+                            release()
+                            return
+                        }
+                        val level = left.toFloat() / FADE_STEPS
+                        runCatching { player.setVolume(level, level) }
+                        main.postDelayed(this, FADE_MILLIS / FADE_STEPS)
+                    }
+                },
+                FADE_MILLIS / FADE_STEPS,
+            )
         }
 
         private fun finish() {
