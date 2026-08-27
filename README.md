@@ -133,23 +133,20 @@ Wording below is One UI 8 / Android 16.
 After a reboot somebody has to tap the icon once — the app does not start
 itself. Pinning re-engages on its own as soon as the board is showing.
 
-**The board is always landscape and always upright, and the app does that
-itself.** Asking Android for landscape no longer works: it ignores a fixed
-`screenOrientation` on large screens from Android 16, and the property that
-opted out of that is gone at targetSdk 37, which is what this app compiles
-against. Measured on a Galaxy Tab, not inferred.
+**The board is nailed to the glass.** It is drawn landscape, filling the screen,
+on the same pixels every time. Turning the tablet does not move it: held the
+right way round it is upright, held the other way round it is upside down,
+exactly as a sheet of paper taped to the screen would be. Nothing reflows,
+nothing spins, nothing has to be worked out — a board is a page whose shape and
+position a child learns, and the strongest form of that promise is one the
+device cannot interrupt.
 
-So the board is turned by however much it takes, worked out from the
-accelerometer rather than from the shape of the window. Held either way round in
-landscape it is upright and fills the screen. Held either way round in portrait
-it is landscape and sideways — the same way sideways both times, so the tablet
-is always asking for the same clockwise turn and never a different one
-depending on which way up it already is.
-
-Reading gravity rather than the window is what makes this hold with **auto-rotate
-turned off**, which is a reasonable thing to do to a tablet a child holds: the
-window then never changes at all, however the tablet is held, so a board that
-went by the window would ride round with it and spend half its time upside down.
+Asking Android for landscape would have been the obvious way and it no longer
+works: it ignores a fixed `screenOrientation` on large screens from Android 16,
+and the property that opted out of that is gone at targetSdk 37, which is what
+this app compiles against. Measured on a Galaxy Tab, not inferred. So the one
+thing the app does is undo Android's own turning, which is why this holds
+whether auto-rotate is on or off.
 
 Two things this does not reach, both because they are not the app's window:
 anything Android draws itself, such as the pinning notice, and Compose's dialogs
