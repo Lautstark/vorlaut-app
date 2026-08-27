@@ -37,15 +37,16 @@ import kotlinx.coroutines.launch
  * [Board] is the front door whenever there is a Sammlung to open: this is a
  * talker, and a child picking the tablet up should get a board rather than a
  * file list. The other two are the adult's, reached on purpose.
+ *
+ * There were four. Warnings had a route of its own and is now a sheet over the
+ * list it describes — SPEC.md 9.3 asks for reachable, and a whole screen with
+ * its own bar and its own way back was more than an aside nobody answers on the
+ * spot needed.
  */
 private sealed interface Route {
     data object Board : Route
 
     data object Sammlungen : Route
-
-    data class Warnings(
-        val packageId: String,
-    ) : Route
 
     data object Settings : Route
 }
@@ -69,6 +70,12 @@ class MainActivity : ComponentActivity() {
             var route by remember { mutableStateOf<Route>(Route.Sammlungen) }
             var opened by remember { mutableStateOf(false) }
 
+            // The same value as handover.lastPackageId, held where Compose can
+            // see it change: the preference is a plain var and writing to it
+            // recomposes nothing, so the list would never learn which Sammlung
+            // it is meant to be marking.
+            var opensNextId by remember { mutableStateOf(handover.lastPackageId) }
+
             val picker =
                 androidx.activity.compose.rememberLauncherForActivityResult(
                     ActivityResultContracts.OpenDocument(),
@@ -86,6 +93,7 @@ class MainActivity : ComponentActivity() {
                     state.stored.firstOrNull { it.boardPackage.id == handover.lastPackageId }
                         ?: state.stored.first()
                 handover.lastPackageId = entry.boardPackage.id
+                opensNextId = entry.boardPackage.id
                 boardModel.open(entry.boardPackage, entry.warnings, entry.archive)
                 route = Route.Board
                 opened = true
@@ -134,7 +142,7 @@ class MainActivity : ComponentActivity() {
 
             VorlautTheme {
                 Box(Modifier.fillMaxSize().background(Vorlaut.colors.bg)) {
-                    when (val here = route) {
+                    when (route) {
                         Route.Board -> {
                             // Back is one of the ordinary ways out, so while the
                             // tablet is handed over it costs the same PIN the
@@ -154,13 +162,14 @@ class MainActivity : ComponentActivity() {
                         Route.Sammlungen -> {
                             SammlungenScreen(
                                 state = state,
+                                currentId = opensNextId,
                                 onAdd = { picker.launch(IMPORTABLE_TYPES) },
                                 onOpen = { entry ->
                                     handover.lastPackageId = entry.boardPackage.id
+                                    opensNextId = entry.boardPackage.id
                                     boardModel.open(entry.boardPackage, entry.warnings, entry.archive)
                                     route = Route.Board
                                 },
-                                onWarnings = { route = Route.Warnings(it.boardPackage.id) },
                                 onRemove = { entry ->
                                     // The board may still be holding this
                                     // package open behind the list. Let it go
@@ -168,24 +177,20 @@ class MainActivity : ComponentActivity() {
                                     val id = entry.boardPackage.id
                                     if (handover.lastPackageId == id) {
                                         handover.lastPackageId = null
+                                        opensNextId = null
                                         boardModel.close()
                                     }
                                     model.remove(id)
                                 },
+                                onDismissNotice = model::dismissNotice,
                                 onSettings = { route = Route.Settings },
                             )
                         }
 
-                        is Route.Warnings -> {
-                            val entry = state.stored.firstOrNull { it.boardPackage.id == here.packageId }
-                            WarningsScreen(
-                                packageName = entry?.boardPackage?.name.orEmpty(),
-                                warnings = entry?.warnings.orEmpty(),
-                                onBack = { route = Route.Sammlungen },
-                            )
-                        }
-
                         Route.Settings -> {
+                            // The device's own Back left the app from here,
+                            // because only the board had ever claimed it.
+                            BackHandler(enabled = true) { route = Route.Sammlungen }
                             SettingsScreen(
                                 pinIsSet = pinIsSet,
                                 pinningAvailable = handover.isPinningAllowedBySystem(),
@@ -268,7 +273,7 @@ class MainActivity : ComponentActivity() {
      * of. On a 6x11 board that is the difference between cramped and legible,
      * and a child does not need the battery percentage.
      *
-     * Only the board. The three list screens keep theirs: an adult stands in
+     * Only the board. The two list screens keep theirs: an adult stands in
      * front of those, the clock is useful there, and nothing on them is short
      * of room.
      *

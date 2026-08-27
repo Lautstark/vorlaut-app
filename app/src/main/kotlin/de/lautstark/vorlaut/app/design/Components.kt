@@ -1,5 +1,11 @@
 package de.lautstark.vorlaut.app.design
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -9,14 +15,17 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -114,22 +123,84 @@ fun Btn(
  * The outcome line: it says what happened and stays until something replaces
  * it. Never a toast — a toast is the treatment for an aside, and a package
  * that could not be read is not an aside (design.md §2).
+ *
+ * [busy] puts the same line to work while something is still happening, which
+ * is the one case the notice could not cover: reading a large `.obz` took long
+ * enough to look like nothing had happened at all.
+ *
+ * [onDismiss] adds the way out. "Stays until something replaces it" was written
+ * about a line that reports a refusal, and it is right about that one; applied
+ * to "„Alltag zu Hause“ hinzugefügt." it left a sentence about last Tuesday at
+ * the top of the list.
  */
 @Composable
 fun Notice(
     text: String,
     modifier: Modifier = Modifier,
     bad: Boolean = false,
+    busy: Boolean = false,
+    dismissLabel: String? = null,
+    onDismiss: (() -> Unit)? = null,
 ) {
     val c = Vorlaut.colors
-    Box(
+    val ink = if (bad) c.danger else c.accentStrong
+    Row(
         modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(Vorlaut.metrics.radiusSm))
             .background(if (bad) c.dangerSoft else c.accentSoft)
             .padding(horizontal = 14.dp, vertical = 11.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Txt(text, style = Vorlaut.type.sub, color = if (bad) c.danger else c.accentStrong)
+        if (busy) Ticker(ink)
+        Txt(text, style = Vorlaut.type.sub, color = ink, modifier = Modifier.weight(1f))
+        if (onDismiss != null) {
+            Box(
+                Modifier
+                    .clip(RoundedCornerShape(999.dp))
+                    .clickable(onClickLabel = dismissLabel) { onDismiss() }
+                    .padding(horizontal = 8.dp, vertical = 2.dp),
+            ) {
+                Txt("✕", style = Vorlaut.type.small, color = ink)
+            }
+        }
+    }
+}
+
+/**
+ * The one indeterminate thing in the app.
+ *
+ * A bar rather than a spinner: it sits inside a line of text and a spinner at
+ * that size is a smudge. There is no percentage to show — the reader is a
+ * stream and the total is not known until it ends — so it says *working*, not
+ * *how far*, and never pretends to the second.
+ */
+@Composable
+private fun Ticker(ink: Color) {
+    val cycle = rememberInfiniteTransition(label = "ticker")
+    val at by cycle.animateFloat(
+        initialValue = -0.45f,
+        targetValue = 1f,
+        animationSpec =
+            infiniteRepeatable(tween(1400, easing = LinearEasing), RepeatMode.Restart),
+        label = "ticker",
+    )
+    Box(
+        Modifier
+            .width(96.dp)
+            .height(4.dp)
+            .clip(RoundedCornerShape(999.dp))
+            .background(ink.copy(alpha = 0.22f)),
+    ) {
+        Box(
+            Modifier
+                .fillMaxWidth(0.45f)
+                .fillMaxHeight()
+                .offset { IntOffset((at * 96.dp.toPx()).toInt(), 0) }
+                .clip(RoundedCornerShape(999.dp))
+                .background(ink),
+        )
     }
 }
 
@@ -162,21 +233,40 @@ fun EmptyState(
     }
 }
 
-/** A fact about a row — not a filter, so not a chip. */
+/**
+ * A fact about a row — not a filter, so not a chip.
+ *
+ * Three weights, and they are the three things a fact can be: [accent] for one
+ * that is simply true and worth knowing, [quiet] for one that is a caveat, and
+ * the default for one that wants somebody to look.
+ */
 @Composable
 fun Flag(
     text: String,
     modifier: Modifier = Modifier,
     quiet: Boolean = false,
+    accent: Boolean = false,
 ) {
     val c = Vorlaut.colors
+    val fill =
+        when {
+            accent -> c.accentSoft
+            quiet -> c.surface2
+            else -> c.dangerSoft
+        }
+    val ink =
+        when {
+            accent -> c.accentStrong
+            quiet -> c.textDim
+            else -> c.danger
+        }
     Box(
         modifier
             .clip(RoundedCornerShape(999.dp))
-            .background(if (quiet) c.surface2 else c.dangerSoft)
+            .background(fill)
             .padding(horizontal = 11.dp, vertical = 4.dp),
     ) {
-        Txt(text, style = Vorlaut.type.small, color = if (quiet) c.textDim else c.danger)
+        Txt(text, style = Vorlaut.type.small, color = ink)
     }
 }
 

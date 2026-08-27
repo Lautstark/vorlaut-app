@@ -66,18 +66,24 @@
     <string name="cancel">Abbrechen</string>
 
     <string name="open_security_settings">Android-Sicherheitseinstellungen öffnen</string>
-    <string name="w_image_missing">A picture is missing. The button shows its label only.</string>
-    <string name="w_image_oversized">A picture is too large to show, so the button has none.</string>
-    <string name="w_image_undecodable">A picture could not be read, so the button has none.</string>
-    <string name="w_sound_missing">A recording is missing. The button stays silent and is marked.</string>
-    <string name="w_sound_undecodable">A recording could not be read. The button stays silent and is marked.</string>
-    <string name="w_sound_too_long">A recording is longer than 30 seconds. The button stays silent and is marked.</string>
-    <string name="w_action_unsupported">This button asks for something this viewer cannot do, so it is switched off.</string>
-    <string name="w_button_missing">The board has a gap where a button was meant to be.</string>
-    <string name="w_path_normalization">A file inside the collection is named unusually. It was found anyway.</string>
-    <string name="w_path_conflict">The collection disagrees with itself about where a file lives.</string>
-    <string name="w_image_reference_ignored">A picture also pointed somewhere online. The one in the collection was used.</string>
-    <string name="w_color_unparseable">A colour could not be read, so the standard one was used.</string>
+    <!--
+      Klartext für jeden Code, für ein Elternteil und nicht für die Person, die
+      die Sammlung gebaut hat. Diese zwölf standen bis hierher englisch in der
+      deutschen Datei — „A picture is missing.“ sagt einer deutschen Leserin
+      nichts, und genau das ist ausgeliefert worden.
+    -->
+    <string name="w_image_missing">Ein Bild fehlt. Die Taste zeigt nur ihre Beschriftung.</string>
+    <string name="w_image_oversized">Ein Bild ist zu groß zum Anzeigen, die Taste hat deshalb keines.</string>
+    <string name="w_image_undecodable">Ein Bild war nicht lesbar, die Taste hat deshalb keines.</string>
+    <string name="w_sound_missing">Eine Aufnahme fehlt. Die Taste bleibt stumm und ist markiert.</string>
+    <string name="w_sound_undecodable">Eine Aufnahme war nicht lesbar. Die Taste bleibt stumm und ist markiert.</string>
+    <string name="w_sound_too_long">Eine Aufnahme ist länger als 30 Sekunden. Die Taste bleibt stumm und ist markiert.</string>
+    <string name="w_action_unsupported">Diese Taste verlangt etwas, das diese App nicht kann, und ist deshalb abgeschaltet.</string>
+    <string name="w_button_missing">Auf der Tafel ist eine Lücke, wo eine Taste stehen sollte.</string>
+    <string name="w_path_normalization">Eine Datei in der Sammlung heißt ungewöhnlich. Sie wurde trotzdem gefunden.</string>
+    <string name="w_path_conflict">Die Sammlung ist sich uneins darüber, wo eine Datei liegt.</string>
+    <string name="w_image_reference_ignored">Ein Bild zeigte zusätzlich ins Netz. Genommen wurde das aus der Sammlung.</string>
+    <string name="w_color_unparseable">Eine Farbe war nicht lesbar, also wurde die übliche genommen.</string>
     <string name="pin_setting_title">PIN für den Weg aus der Tafel</string>
     <string name="pin_setting_on">Es ist eine PIN gesetzt. Wer die Tafel verlassen will, muss sie eingeben.</string>
     <string name="pin_setting_off">Keine PIN gesetzt. Die Tafel lässt sich durch langes Drücken am Griff verlassen.</string>
@@ -89,10 +95,18 @@
     <string name="pinning_off">Ausgeschaltet. Die Home- und Übersichtstaste verlassen die Tafel weiterhin — das kann nur in Androids Einstellungen geändert werden, nicht hier.</string>
     <string name="pin_remove_title">PIN entfernen</string>
     <string name="pin_remove_body">Gib die aktuelle PIN ein. Danach lässt sich die Tafel ohne PIN verlassen.</string>
-    <string name="menu_open">Öffnen</string>
-    <string name="menu_warnings">Warnungen</string>
     <string name="menu_remove">Entfernen</string>
     <string name="remove_title">„%1$s“ entfernen</string>
     <string name="remove_body">Die Sammlung wird von diesem Gerät gelöscht — alle Tafeln, Bilder und Aufnahmen darin. Die Datei, aus der sie kam, bleibt unberührt.</string>
     <string name="remove_confirm">Entfernen</string>
+
+    <!-- Die Sammlung, die beim nächsten Start aufgeht. -->
+    <string name="opens_next">öffnet sich</string>
+    <string name="reading_file">Die Datei wird gelesen …</string>
+    <string name="dismiss_notice">Meldung schließen</string>
+    <string name="warnings_title">Warnungen · %1$s</string>
+    <string name="done">Fertig</string>
+    <string name="warning_at_package">ganze Sammlung · %1$s</string>
+    <string name="warning_at_board">Tafel %1$s · %2$s</string>
+    <string name="warning_at_button">Tafel %1$s · Taste %2$s · %3$s</string>
 </resources>

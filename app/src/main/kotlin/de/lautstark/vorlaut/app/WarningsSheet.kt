@@ -2,31 +2,25 @@ package de.lautstark.vorlaut.app
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import de.lautstark.vorlaut.app.design.AppBar
 import de.lautstark.vorlaut.app.design.Btn
 import de.lautstark.vorlaut.app.design.BtnTier
 import de.lautstark.vorlaut.app.design.EmptyState
@@ -37,61 +31,68 @@ import de.lautstark.vorlaut.boardpackage.ImportWarning
 import de.lautstark.vorlaut.boardpackage.WarningCode
 
 /**
- * The warning list for one Sammlung.
+ * The warning list for one Sammlung, as a sheet over the list it belongs to.
  *
  * SPEC.md 9.3 requires it to exist and to be reachable after the import: the
  * person importing is usually not the person who later notices a button has
- * gone quiet, and by then a toast is long gone.
+ * gone quiet, and by then a toast is long gone. A sheet is reachable, and this
+ * was a screen with its own app bar, its own intro and its own way back — a
+ * whole route for an aside nobody answers on the spot.
  *
  * The order is the importer's and is not re-sorted here. SPEC.md 9.5 makes the
  * sequence part of the format precisely so a caregiver can compare this list
  * against what they saw last week; a screen that sorted it by its own
  * preference would undo that at the last step.
+ *
+ * The silhouette is ConfirmDestructive's, value for value — same plane, same
+ * radius, same 22dp — rather than a fourth thing that looks nearly like it.
  */
 @Composable
-fun WarningsScreen(
+fun WarningsSheet(
     packageName: String,
     warnings: List<ImportWarning>,
-    onBack: () -> Unit,
-    modifier: Modifier = Modifier,
+    onDismiss: () -> Unit,
 ) {
     val c = Vorlaut.colors
-    Column(
-        modifier
-            .fillMaxSize()
-            .background(c.bg)
-            .windowInsetsPadding(WindowInsets.safeDrawing),
-    ) {
-        AppBar(where = packageName)
-
-        LazyColumn(
-            Modifier.weight(1f).fillMaxWidth(),
-            contentPadding =
-                androidx.compose.foundation.layout
-                    .PaddingValues(horizontal = Vorlaut.metrics.screenMargin),
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Column(
+            Modifier
+                .widthIn(max = 560.dp)
+                .clip(RoundedCornerShape(Vorlaut.metrics.radius))
+                .background(c.surface)
+                .border(1.dp, c.line, RoundedCornerShape(Vorlaut.metrics.radius))
+                .padding(22.dp),
         ) {
-            item {
-                Column(Modifier.fillMaxWidth()) {
-                    if (warnings.isEmpty()) {
-                        EmptyState(
-                            headline = stringResource(R.string.no_warnings),
-                            body = stringResource(R.string.nothing_missing_body),
-                        )
-                    } else {
-                        Notice(stringResource(R.string.warnings_intro))
+            Txt(
+                stringResource(R.string.warnings_title, packageName),
+                style = Vorlaut.type.rowName,
+                color = c.text,
+                maxLines = 1,
+            )
+            Box(Modifier.size(10.dp))
+
+            if (warnings.isEmpty()) {
+                EmptyState(
+                    headline = stringResource(R.string.no_warnings),
+                    body = stringResource(R.string.nothing_missing_body),
+                )
+            } else {
+                Notice(stringResource(R.string.warnings_intro))
+                Box(Modifier.size(12.dp))
+                // Bounded rather than free: a Sammlung with forty warnings would
+                // otherwise grow a sheet taller than the tablet, and a Dialog
+                // does not scroll on the window's behalf.
+                LazyColumn(Modifier.heightIn(max = 320.dp).fillMaxWidth()) {
+                    items(warnings) { warning ->
+                        Box(Modifier.fillMaxWidth()) { WarningRow(warning) }
                     }
-                    Box(Modifier.size(16.dp))
                 }
             }
-            items(warnings) { warning ->
-                Box(Modifier.fillMaxWidth()) { WarningRow(warning) }
-            }
-            item {
-                Row(
-                    Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 24.dp),
-                    horizontalArrangement = Arrangement.End,
-                ) { Btn(stringResource(R.string.back), onBack, tier = BtnTier.Normal) }
-            }
+
+            Row(
+                Modifier.fillMaxWidth().padding(top = 18.dp),
+                horizontalArrangement = Arrangement.End,
+            ) { Btn(stringResource(R.string.done), onDismiss, tier = BtnTier.Normal) }
         }
     }
 }
@@ -104,7 +105,7 @@ private fun WarningRow(warning: ImportWarning) {
             .fillMaxWidth()
             .padding(bottom = 8.dp)
             .clip(RoundedCornerShape(Vorlaut.metrics.radius))
-            .background(c.surface)
+            .background(c.bg)
             .border(1.dp, c.line, RoundedCornerShape(Vorlaut.metrics.radius))
             .padding(15.dp),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -129,11 +130,33 @@ private fun WarningRow(warning: ImportWarning) {
 
 private fun Modifier.heightAtLeast() = this.then(Modifier.size(width = 10.dp, height = 42.dp))
 
+/**
+ * Where the warning is, as the importer names it.
+ *
+ * The ids stay verbatim — they are what the person who built the Sammlung will
+ * search their editor for — but the words around them are the reader's. They
+ * were "Tafel" and "Taste" in the source, which put German nouns in the English
+ * build beside explanations that had just been translated out of it.
+ */
+@Composable
 private fun where(w: ImportWarning): String =
     when {
-        w.boardId == null -> "ganze Sammlung · ${w.code.wireName}"
-        w.buttonId == null -> "Tafel ${w.boardId} · ${w.code.wireName}"
-        else -> "Tafel ${w.boardId} · Taste ${w.buttonId} · ${w.code.wireName}"
+        w.boardId == null -> {
+            stringResource(R.string.warning_at_package, w.code.wireName)
+        }
+
+        w.buttonId == null -> {
+            stringResource(R.string.warning_at_board, w.boardId.orEmpty(), w.code.wireName)
+        }
+
+        else -> {
+            stringResource(
+                R.string.warning_at_button,
+                w.boardId.orEmpty(),
+                w.buttonId.orEmpty(),
+                w.code.wireName,
+            )
+        }
     }
 
 /**
@@ -146,7 +169,9 @@ private fun where(w: ImportWarning): String =
  *
  * In resources rather than in this file: a warning list explaining itself in
  * German inside an otherwise English app has told its reader nothing, and that
- * is precisely what shipped until it was run in English and looked at.
+ * is precisely what shipped until it was run in English and looked at. The
+ * mirror image shipped too and lasted longer — all twelve sat in English in the
+ * German base file, which is the one every German-speaking family reads.
  */
 @Composable
 private fun explain(code: WarningCode): String =
