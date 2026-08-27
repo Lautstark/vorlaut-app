@@ -142,7 +142,7 @@ private fun where(w: ImportWarning): String =
  * The codes are for a machine and this list is for a person — usually a parent
  * or a carer rather than whoever built the Sammlung. `sound_missing` says
  * nothing on its own about what a child will experience, which is that the
- * button speaks in the device voice instead of the recorded one.
+ * button makes no sound at all and wears a marker saying so.
  *
  * In resources rather than in this file: a warning list explaining itself in
  * German inside an otherwise English app has told its reader nothing, and that

@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.sp
 import de.lautstark.vorlaut.app.design.Txt
 import de.lautstark.vorlaut.app.design.Vorlaut
 import de.lautstark.vorlaut.app.design.VorlautBoard
+import de.lautstark.vorlaut.boardpackage.AudioSource
 import de.lautstark.vorlaut.boardpackage.Board
 import de.lautstark.vorlaut.boardpackage.Button
 import de.lautstark.vorlaut.boardpackage.ButtonState
@@ -165,7 +166,23 @@ private fun ButtonCell(
     val c = Vorlaut.colors
     val disabled = button.onActivate == OnActivate.Disabled
     val degraded = button.state == ButtonState.DEGRADED
-    val speaking = state.isSynthesising(button) || state.isPlayingClip(button)
+
+    /* A word button with no recording to say it with.
+     *
+     * The device voice is not a fallback here (see Speech), so this button is
+     * silent, and silence on press is the one failure a board must not keep to
+     * itself: it looks exactly like a board that is working. It carries the
+     * importer's own marker rather than a second one of its own, because to the
+     * person holding the tablet it is the same fault — this button does not do
+     * what a button on this board does.
+     *
+     * SPEC.md 9.2 says a button with no clip is *not* degraded, and the importer
+     * still says so; this is the viewer drawing what it can actually do with
+     * what it was given, and nothing the fixtures pin.
+     */
+    val voiceless = speaks(button) && button.audio !is AudioSource.Recorded
+    val marked = degraded || voiceless
+    val speaking = state.isPlayingClip(button)
 
     // The tint is the word class, written into background_color by the builder.
     // It is the only colour on this screen that carries meaning, which is why
@@ -213,18 +230,13 @@ private fun ButtonCell(
             .then(
                 // The speaking mark is the loudest thing on the button while it
                 // lasts, because it answers "did it hear me" — the question a
-                // user asks first and cannot ask out loud. Clip and device
-                // voice are told apart by hue.
-                when {
-                    state.isPlayingClip(button) -> Modifier.border(4.dp, c.accent, radius)
-                    state.isSynthesising(button) -> Modifier.border(4.dp, c.accentStrong, radius)
-                    else -> Modifier
-                },
+                // user asks first and cannot ask out loud.
+                if (speaking) Modifier.border(4.dp, c.accent, radius) else Modifier,
             )
             // A disabled button still takes the press and visibly refuses it,
             // rather than behaving like a gap in the board.
             .clickable { onPress(button) }
-            .semantics { contentDescription = describe(button, degraded, disabled) }
+            .semantics { contentDescription = describe(button, degraded, voiceless, disabled) }
             .padding(8.dp),
     ) {
         Column(
@@ -285,7 +297,7 @@ private fun ButtonCell(
         // logged. Deliberately not a stand-in pictogram — drawing one would
         // tell a child who cannot read that the button has a picture, which is
         // the thing that has gone missing.
-        if (degraded) {
+        if (marked) {
             Box(
                 Modifier
                     .align(Alignment.TopEnd)
@@ -370,6 +382,7 @@ private fun DisabledCross(modifier: Modifier) {
 private fun describe(
     button: Button,
     degraded: Boolean,
+    voiceless: Boolean,
     disabled: Boolean,
 ) = buildString {
     append(button.label ?: button.id)
@@ -378,7 +391,15 @@ private fun describe(
     // English half is wired through.
     if (disabled) append(", nicht verfügbar")
     if (degraded) append(", unvollständig")
+    if (voiceless) append(", ohne Aufnahme")
 }
+
+/** Whether a press on this button is meant to make a sound at all. */
+private fun speaks(button: Button) =
+    when (button.onActivate) {
+        OnActivate.Append, OnActivate.SpeakImmediately, is OnActivate.AppendThenNavigate -> true
+        else -> false
+    }
 
 /** Type scales with the cell, so a dense board stays legible instead of clipping. */
 private fun labelSize(
