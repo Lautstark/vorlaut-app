@@ -239,11 +239,46 @@ private fun ButtonCell(
      * keeps its paper and its word — so it does take the wedge, because on that
      * cell nothing else says the page is about to change.
      */
-    val wedge =
-        when {
-            button.onActivate is OnActivate.Navigation && !chrome -> Wedge.Onward
-            button.onActivate == OnActivate.SpeakImmediately -> Wedge.Sound
-            else -> null
+    val wedge: Wedge? =
+        when (button.onActivate) {
+            OnActivate.Home, is OnActivate.Navigate -> {
+                if (chrome) null else Wedge.Onward
+            }
+
+            // A carrier phrase is a word that also turns the page, so it is a
+            // way onward and wears the wedge. It is deliberately not an
+            // `OnActivate.Navigation` — see the note on AppendThenNavigate,
+            // which exists so that sites which must not treat it as plain
+            // navigation are asked. This `when` is exhaustive for the same
+            // reason: the first version of it tested `is Navigation`, which
+            // silently skipped every carrier phrase on the board.
+            is OnActivate.AppendThenNavigate -> {
+                Wedge.Onward
+            }
+
+            OnActivate.SpeakImmediately -> {
+                Wedge.Sound
+            }
+
+            // An `actions` array, whose meaning SPEC.md 7.4 does not define and
+            // which no fixture exercises. Marked by what it contains rather
+            // than by what it is: if one of its members turns the page, the
+            // press turns the page, and that is the fact the wedge states.
+            is OnActivate.Sequence -> {
+                when {
+                    (button.onActivate as OnActivate.Sequence).actions.any {
+                        it is OnActivate.Navigation || it is OnActivate.AppendThenNavigate
+                    } -> Wedge.Onward
+
+                    else -> null
+                }
+            }
+
+            OnActivate.Append, OnActivate.SpeakBar, OnActivate.Clear,
+            OnActivate.Backspace, OnActivate.Disabled,
+            -> {
+                null
+            }
         }
 
     Box(
@@ -257,7 +292,7 @@ private fun ButtonCell(
             // controls wear the same hairline for the same reason.
             .then(if (chrome) Modifier.border(1.5.dp, VorlautBoard.chromeEdge, radius) else Modifier)
             .then(if (edge != null) Modifier.border(4.dp, edge, radius) else Modifier)
-            .then(wedge?.let { Modifier.drawWedge(it, VorlautBoard.ink, wedgeSide(cell)) } ?: Modifier)
+            .then(wedge?.let { Modifier.drawWedge(it, VorlautBoard.ground, wedgeSide(cell)) } ?: Modifier)
             .then(
                 // The speaking mark is the loudest thing on the button while it
                 // lasts, because it answers "did it hear me" — the question a
@@ -422,10 +457,15 @@ private fun wedgeSide(cell: Dp) = (cell.value * 0.17f).coerceIn(14f, 30f).dp
 /**
  * The mark itself: a right triangle in the cell's own corner.
  *
- * In [VorlautBoard.ink] at full strength, which is the same ink the word is
- * set in and is not a stylistic choice. Measured against the ten Fitzgerald
- * fills a cell can wear: at 55% opacity `place` falls to 2.91:1 and misses the
- * 3:1 a non-text graphic needs, while full strength is 7.38:1 at its worst.
+ * In [VorlautBoard.ground], so the corner reads as cut away rather than drawn
+ * on: what shows through is the board behind the tile, which is what a key
+ * that leads somewhere else actually means. It also keeps the mark out of the
+ * ink, so nothing on the cell competes with the word.
+ *
+ * The colour is safe on every tile the format can produce, which is not luck:
+ * a cell already has to clear 3:1 against the ground to be a visible cell at
+ * all, so a notch of ground in it clears the same 3:1 by the same measurement.
+ * Worst of the ten Fitzgerald fills is `place` at 4.64:1.
  *
  * Drawn before the cell's padding is applied, so it reaches the true corner,
  * and after the clip, so it takes the tile's own rounding.
@@ -468,10 +508,12 @@ private fun describe(
     if (voiceless) append(", ohne Aufnahme")
     // The same two facts the wedges carry. A mark that only exists in the
     // drawing is a mark that half the people this app is for cannot have.
-    when {
-        button.onActivate == OnActivate.Home -> append(", zur Startseite")
-        button.onActivate is OnActivate.Navigation -> append(", öffnet eine Seite")
-        button.onActivate == OnActivate.SpeakImmediately -> append(", spricht sofort")
+    when (button.onActivate) {
+        OnActivate.Home -> append(", zur Startseite")
+        is OnActivate.Navigate -> append(", öffnet eine Seite")
+        is OnActivate.AppendThenNavigate -> append(", und öffnet eine Seite")
+        OnActivate.SpeakImmediately -> append(", spricht sofort")
+        else -> Unit
     }
 }
 

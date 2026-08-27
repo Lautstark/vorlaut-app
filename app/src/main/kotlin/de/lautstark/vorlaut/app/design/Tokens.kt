@@ -103,9 +103,21 @@ object VorlautBoard {
      *  neither does anything it is written on. */
     val ink = Color(0xFF1A1A1D)
 
-    /** A bar control's glyph, live and dead. */
+    /**
+     * A bar control's glyph, live and dead.
+     *
+     * [iconDead] is what most of the bar is most of the time — an empty
+     * sentence leaves speak, undo, clear and both arrows with nothing to do —
+     * so it is the shade the bar is actually judged by, and at #5B5A64 it was
+     * 2.27:1 against the plate. A disabled control is exempt from 1.4.11 and
+     * that is not a reason to leave it unreadable to the adult reaching for it.
+     *
+     * 4.83:1 now, against the live glyph's 12.99:1. The gap is what says dead:
+     * it has to stay wide, because a control that looks live and refuses the
+     * press teaches the person that the device ignores them.
+     */
     val icon = Color(0xFFEBEBF0)
-    val iconDead = Color(0xFF5B5A64)
+    val iconDead = Color(0xFF908F99)
 
     /** A cell nothing sits in: a hole in the ground rather than a pale tile, so
      *  that nothing which is not a button looks like one. A hole is not a
@@ -113,7 +125,7 @@ object VorlautBoard {
     val hole = Color(0x24000000)
 
     /**
-     * The hairline round everything drawn in [barPlate].
+     * The hairline round the start key.
      *
      * WCAG 2.2 1.4.11 wants 3:1 between a control and what it sits on, and
      * [barPlate] on [ground] is 1.41:1. Widening the gap cannot fix it: pure
@@ -126,6 +138,13 @@ object VorlautBoard {
      * against [barPlate], which leaves the plate as dark as it was. This is the
      * same answer Lautstark/design reached when three planes could not hold 3:1
      * between them either, and for the same reason.
+     *
+     * On the start key only. The bar's five controls wore it too and it was
+     * taken back off: outlined boxes in a row read as a toolbar of their own
+     * and pulled the eye up off the board, which is the thing the screen is
+     * for. Their glyphs identify them without help — 12.99:1 live and 4.83:1
+     * dead. The start key is the one that needs the edge, because it is a cell
+     * among cells and the plate is all that says it is not a word.
      */
     val chromeEdge = Color(0xFF8F8F98)
 
