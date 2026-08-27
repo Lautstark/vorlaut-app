@@ -221,11 +221,17 @@ private fun ButtonCell(
      */
     val chrome = button.onActivate == OnActivate.Home && fill == null && edge == null
 
+
     Box(
         Modifier
             .fillMaxSize()
             .clip(radius)
             .background(if (chrome) VorlautBoard.barPlate else fill ?: VorlautBoard.paper)
+            // The plate is 1.41:1 against the ground and cannot be made to
+            // clear 1.4.11's 3:1 by any darker shade — see chromeEdge, which
+            // carries the whole argument and the measurement. The bar's four
+            // controls wear the same hairline for the same reason.
+            .then(if (chrome) Modifier.border(1.5.dp, VorlautBoard.chromeEdge, radius) else Modifier)
             .then(if (edge != null) Modifier.border(4.dp, edge, radius) else Modifier)
             .then(
                 // The speaking mark is the loudest thing on the button while it

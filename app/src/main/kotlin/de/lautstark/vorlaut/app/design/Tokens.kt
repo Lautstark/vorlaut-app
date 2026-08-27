@@ -108,8 +108,26 @@ object VorlautBoard {
     val iconDead = Color(0xFF5B5A64)
 
     /** A cell nothing sits in: a hole in the ground rather than a pale tile, so
-     *  that nothing which is not a button looks like one. */
+     *  that nothing which is not a button looks like one. A hole is not a
+     *  control and is deliberately quiet, so the 3:1 below is not asked of it. */
     val hole = Color(0x24000000)
+
+    /**
+     * The hairline round everything drawn in [barPlate].
+     *
+     * WCAG 2.2 1.4.11 wants 3:1 between a control and what it sits on, and
+     * [barPlate] on [ground] is 1.41:1. Widening the gap cannot fix it: pure
+     * black on this ground is **1.92:1**, so 3:1 is unreachable downwards with
+     * any colour at all. The chrome would have to go lighter than the ground,
+     * which is the one thing it must not do — it is dark precisely so that it
+     * does not compete with the white cells that are the board.
+     *
+     * So the edge carries it instead. 3.41:1 against [ground] and 4.81:1
+     * against [barPlate], which leaves the plate as dark as it was. This is the
+     * same answer Lautstark/design reached when three planes could not hold 3:1
+     * between them either, and for the same reason.
+     */
+    val chromeEdge = Color(0xFF8F8F98)
 
     /** The screen's edge. Smaller than [VorlautMetrics.screenMargin], which the
      *  three list screens use — a dark border reads wider than a light one. */

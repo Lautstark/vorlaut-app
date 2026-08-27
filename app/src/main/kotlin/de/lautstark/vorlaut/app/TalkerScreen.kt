@@ -199,7 +199,8 @@ private fun SentenceBar(
                 .weight(1f)
                 .fillMaxHeight()
                 .clip(RoundedCornerShape(Vorlaut.metrics.radiusSm))
-                .background(VorlautBoard.barPlate),
+                .background(VorlautBoard.barPlate)
+                .chromeOutline(),
         ) {
             // An empty bar is the plate and nothing else. A placeholder would be
             // either text — the thing this screen exists for people who cannot
@@ -299,6 +300,16 @@ private fun BarEntry(
     }
 }
 
+/**
+ * The hairline that makes a dark control visible on the dark ground.
+ *
+ * Here rather than spelled out at each of the four call sites, because the
+ * argument for it is one argument — see [VorlautBoard.chromeEdge] — and four
+ * copies of a border would be four places for it to drift.
+ */
+@Composable
+private fun Modifier.chromeOutline() = border(1.5.dp, VorlautBoard.chromeEdge, RoundedCornerShape(Vorlaut.metrics.radiusSm))
+
 @Composable
 private fun PageArrow(
     back: Boolean,
@@ -312,6 +323,7 @@ private fun PageArrow(
             .width(ARROW_WIDTH)
             .clip(RoundedCornerShape(Vorlaut.metrics.radiusSm))
             .background(VorlautBoard.barPlate)
+            .chromeOutline()
             .clickable(enabled = enabled) { onClick() }
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
@@ -332,6 +344,7 @@ private fun BarControl(
             .width(if (primary) SPEAK_WIDTH else CONTROL_WIDTH)
             .clip(RoundedCornerShape(Vorlaut.metrics.radiusSm))
             .background(VorlautBoard.barPlate)
+            .chromeOutline()
             .clickable(enabled = enabled) { onClick() }
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
