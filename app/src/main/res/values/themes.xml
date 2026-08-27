@@ -16,5 +16,13 @@
   androidx.core dependency has to be added to say it.
 -->
 <resources>
-    <style name="Theme.Vorlaut" parent="android:Theme.Material.NoActionBar" />
+    <!--
+      Split in two so that values-v31 can add the splash screen without
+      restating this. A style that overrides another by qualifier replaces it
+      whole, so the alternative is the same parent and the same items written
+      twice, which is the arrangement that quietly drifts.
+    -->
+    <style name="Base.Theme.Vorlaut" parent="android:Theme.Material.NoActionBar" />
+
+    <style name="Theme.Vorlaut" parent="Base.Theme.Vorlaut" />
 </resources>
