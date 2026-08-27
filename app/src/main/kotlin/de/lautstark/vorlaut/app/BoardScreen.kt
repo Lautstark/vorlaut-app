@@ -69,21 +69,17 @@ import de.lautstark.vorlaut.boardpackage.OnActivate
  *
  * Filling the space is not the same as using it, which is what
  * [MIN_CELL_ASPECT] and [MAX_CELL_ASPECT] are for. A grid of pure weights takes
- * whatever shape the window has: a 3x5 board in a portrait window becomes five
- * slots two and a half times taller than they are wide, with the symbol a strip
- * across the middle and the rest of the tile empty. So a cell may stretch, but
- * only so far; past that the grid stops growing, centres itself, and leaves the
- * remainder as ground. The band is wide enough that a landscape tablet — the
- * shape these boards are drawn for — never reaches it and looks exactly as it
- * did.
+ * whatever shape it is given: stretched far enough, a cell becomes a slot with
+ * the symbol a strip across the middle and the rest of the tile empty. So a
+ * cell may stretch, but only so far; past that the grid stops growing, centres
+ * itself, and leaves the remainder as ground.
  *
- * This is where the orientation lock ended up. A manifest that asked for
- * landscape was the obvious answer and it does not work: Android 16 ignores a
- * fixed orientation on large screens, and the property that opted out of that
- * is gone at targetSdk 37, which is what this app compiles against. Measured on
- * a Galaxy Tab held in portrait, the request was simply not honoured. A board
- * that keeps its shape whatever the window does needs no permission from the
- * platform.
+ * The case that made this visible — a 3x5 board in a portrait window — is
+ * [AlwaysLandscape]'s now, and it turns the board rather than squeezing it.
+ * What is left here is every other window that is not the shape the package was
+ * drawn for: a wide desktop window, a split screen, a foldable half-open. The
+ * band is wide enough that a landscape tablet never reaches it, so the shape
+ * these boards are drawn for is untouched.
  */
 private const val MIN_CELL_ASPECT = 0.8f
 private const val MAX_CELL_ASPECT = 1.5f
