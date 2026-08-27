@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -65,7 +66,28 @@ import de.lautstark.vorlaut.boardpackage.OnActivate
  * them change; nothing here makes them stay, and nothing in the format does. The
  * builder wrote that column onto every board, and this is the gap that tells a
  * reader so.
+ *
+ * Filling the space is not the same as using it, which is what
+ * [MIN_CELL_ASPECT] and [MAX_CELL_ASPECT] are for. A grid of pure weights takes
+ * whatever shape the window has: a 3x5 board in a portrait window becomes five
+ * slots two and a half times taller than they are wide, with the symbol a strip
+ * across the middle and the rest of the tile empty. So a cell may stretch, but
+ * only so far; past that the grid stops growing, centres itself, and leaves the
+ * remainder as ground. The band is wide enough that a landscape tablet — the
+ * shape these boards are drawn for — never reaches it and looks exactly as it
+ * did.
+ *
+ * This is where the orientation lock ended up. A manifest that asked for
+ * landscape was the obvious answer and it does not work: Android 16 ignores a
+ * fixed orientation on large screens, and the property that opted out of that
+ * is gone at targetSdk 37, which is what this app compiles against. Measured on
+ * a Galaxy Tab held in portrait, the request was simply not honoured. A board
+ * that keeps its shape whatever the window does needs no permission from the
+ * platform.
  */
+private const val MIN_CELL_ASPECT = 0.8f
+private const val MAX_CELL_ASPECT = 1.5f
+
 @Composable
 fun BoardScreen(
     board: Board,
@@ -84,13 +106,31 @@ fun BoardScreen(
     // meaning, and drowns the Fitzgerald tints that do. On a sparse board it
     // is most of the screen. The approved mock does not use it at all.
     BoxWithConstraints(modifier.fillMaxSize().background(VorlautBoard.ground)) {
-        // The seam takes two gaps' worth of width off the row, so the cell size
-        // the images and the type scale off has to know about it.
-        val across = maxWidth - if (apart) gap * 2 else 0.dp
-        val cell = minOf(across / board.columns.coerceAtLeast(1), maxHeight / board.rows.coerceAtLeast(1))
+        val columns = board.columns.coerceAtLeast(1)
+        val rows = board.rows.coerceAtLeast(1)
+        // The gutters are not the cells' to divide. The seam after the first
+        // column takes two gaps' worth on top of that, so the size the images
+        // and the type scale off has to know about it.
+        val seam = if (apart) gap * 2 else 0.dp
+        val forCells = (maxWidth - gap * (columns - 1) - seam).coerceAtLeast(0.dp)
+        val forRows = (maxHeight - gap * (rows - 1)).coerceAtLeast(0.dp)
+        var cellWidth = forCells / columns
+        var cellHeight = forRows / rows
+        val shape = if (cellHeight > 0.dp) cellWidth / cellHeight else 1f
+        if (shape > MAX_CELL_ASPECT) cellWidth = cellHeight * MAX_CELL_ASPECT
+        if (shape < MIN_CELL_ASPECT) cellHeight = cellWidth / MIN_CELL_ASPECT
+        // A symbol is square, so it is the shorter side that governs how large
+        // it can be drawn and how large the label under it may be set.
+        val cell = minOf(cellWidth, cellHeight)
         val targetPx = with(LocalDensity.current) { cell.toPx().toInt() }
 
-        Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(gap)) {
+        Column(
+            Modifier
+                .width(cellWidth * columns + gap * (columns - 1) + seam)
+                .height(cellHeight * rows + gap * (rows - 1))
+                .align(Alignment.Center),
+            verticalArrangement = Arrangement.spacedBy(gap),
+        ) {
             board.cells.forEach { row ->
                 Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(gap)) {
                     row.forEachIndexed { column, cellId ->
