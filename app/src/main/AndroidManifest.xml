@@ -24,9 +24,36 @@
         android:theme="@style/Theme.Vorlaut"
         tools:targetApi="33">
 
+        <!--
+          A board is a landscape thing. Its rows and columns come from the
+          package and the cells divide what is there: turned on end, a 3x5 board
+          becomes five tall slots with the symbol squeezed into a strip, which is
+          what a Galaxy Tab does by default because its natural orientation is
+          portrait.
+
+          userLandscape rather than landscape, so turning the tablet end for end
+          turns the picture with it. A tablet lying on a table gets picked up
+          from whichever side somebody is standing on, and a board upside down
+          is worse than a board that rotated.
+
+          Android 16 ignores this on large screens unless an app says otherwise,
+          which is what the property below is: the compatibility override that
+          hands orientation back to the app. Both are needed, and neither is
+          worth having without the other.
+
+          Lint calls the pair discouraged for exactly that reason, and it is
+          right about the general case. It is suppressed rather than obeyed
+          because the pair was measured on a tablet held in portrait: the board
+          stayed landscape and was letterboxed, which is the outcome wanted.
+        -->
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:screenOrientation="userLandscape"
+            tools:ignore="DiscouragedApi">
+            <property
+                android:name="android.window.PROPERTY_COMPAT_ALLOW_ORIENTATION_OVERRIDE"
+                android:value="false" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
