@@ -102,6 +102,37 @@ its secrets are described.
 git tag v0.2.0 && git push origin v0.2.0
 ```
 
+## Setting up the tablet a child will hold
+
+The app asks Android to pin itself to the screen whenever the board is showing,
+and re-asks whenever it comes back to the front. That stops Home, Overview,
+notifications and a stray swipe. It is **not** a kiosk: this app is not a device
+owner, so Android's own unpin gesture still exists, and no app can switch it
+off. Making it a real lockdown needs device-owner provisioning, which means
+factory-resetting the tablet — a different piece of work with a different cost.
+
+Three things have to be turned on by hand, once, on the tablet itself. There is
+no adb or API equivalent: Android requires a human to confirm them in Settings.
+Wording below is One UI 8 / Android 16.
+
+1. **Bildschirmfixierung** — Einstellungen → Sicherheit und Datenschutz →
+   Weitere Sicherheitseinstellungen. Without it the first `startLockTask()` only
+   raises a confirmation dialog instead of pinning.
+2. **A device screen lock (PIN, pattern or password).** Where the device offers
+   *Zum Aufheben der Fixierung PIN abfragen*, this is what that toggle needs, and
+   it turns the unpin gesture into "gesture, then the device PIN". On One UI 8
+   the toggle is gone — but on that same version the standard unpin gesture does
+   not exit a pinned app at all, so there is nothing left to gate. Verify by
+   trying to unpin it yourself before handing the tablet over; do not assume
+   either way from the version number.
+3. **The app's own PIN**, in vorlaut's Einstellungen. This is a different lock
+   from the two above and guards a different door: the way out *through the app*,
+   the handle at the left edge of the board. Android's pinning guards the ways
+   out around it.
+
+After a reboot somebody has to tap the icon once — the app does not start
+itself. Pinning re-engages on its own as soon as the board is showing.
+
 ## Licence
 
 MIT. See [`LICENSE`](LICENSE).
