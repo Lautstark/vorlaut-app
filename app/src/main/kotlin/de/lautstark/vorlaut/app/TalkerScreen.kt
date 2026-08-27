@@ -13,18 +13,15 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -113,29 +110,30 @@ fun TalkerScreen(
     val gap = Vorlaut.metrics.gap
     KeepScreenOn(enabled = true)
 
-    Column(
-        modifier
-            .fillMaxSize()
-            .background(VorlautBoard.ground)
-            // The board is full bleed and therefore runs under the status bar
-            // and the gesture pill unless it is told not to. A talker whose top
-            // row is half under the clock is a talker with a row of unreachable
-            // buttons.
-            .windowInsetsPadding(WindowInsets.safeDrawing)
-            .padding(VorlautBoard.edge),
-        verticalArrangement = Arrangement.spacedBy(VorlautBoard.barGap),
-    ) {
-        SentenceBar(
-            modifier = Modifier.weight(VorlautBoard.BAR_FRACTION),
-            entries = state.entries,
-            media = media,
-            onSpeak = onSpeak,
-            onUndo = onUndo,
-            onClear = onClear,
-            onLeave = onLeave,
-        )
-        Box(Modifier.fillMaxSize().weight(1f - VorlautBoard.BAR_FRACTION)) {
-            BoardScreen(board = board, state = state, media = media, onPress = onPress)
+    // The board is full bleed and therefore runs under the status bar and the
+    // gesture pill unless it is told not to. A talker whose top row is half
+    // under the clock is a talker with a row of unreachable buttons. Holding
+    // that back is [AlwaysLandscape]'s job, along with the quarter turn that
+    // keeps the board landscape in a window that is not.
+    AlwaysLandscape(modifier) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(VorlautBoard.edge),
+            verticalArrangement = Arrangement.spacedBy(VorlautBoard.barGap),
+        ) {
+            SentenceBar(
+                modifier = Modifier.weight(VorlautBoard.BAR_FRACTION),
+                entries = state.entries,
+                media = media,
+                onSpeak = onSpeak,
+                onUndo = onUndo,
+                onClear = onClear,
+                onLeave = onLeave,
+            )
+            Box(Modifier.fillMaxSize().weight(1f - VorlautBoard.BAR_FRACTION)) {
+                BoardScreen(board = board, state = state, media = media, onPress = onPress)
+            }
         }
     }
 }

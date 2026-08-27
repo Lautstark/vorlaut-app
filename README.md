@@ -133,15 +133,23 @@ Wording below is One UI 8 / Android 16.
 After a reboot somebody has to tap the icon once — the app does not start
 itself. Pinning re-engages on its own as soon as the board is showing.
 
-**Orientation is the device's, not the app's.** A board is drawn for a landscape
-screen, but the app cannot ask for one: Android 16 ignores a fixed
-`screenOrientation` on large screens, and the property that opted out of that is
-gone at targetSdk 37, which is what this app compiles against. Measured on a
-Galaxy Tab, not inferred. What the app does instead is keep the board's shape —
-in a portrait window the grid stops stretching, centres itself and leaves ground
-above and below, rather than becoming a column of tall slots. It is still worth
-turning **auto-rotate off** with the tablet held in landscape, so a tablet lying
-flat on a table does not decide for itself.
+**The board is always landscape, and the app does that itself.** Asking Android
+for landscape no longer works: it ignores a fixed `screenOrientation` on large
+screens from Android 16, and the property that opted out of that is gone at
+targetSdk 37, which is what this app compiles against. Measured on a Galaxy Tab,
+not inferred. So in a portrait window the board is measured landscape and drawn
+turned a quarter — full screen, not letterboxed — which leaves whoever is
+holding the tablet one obvious thing to do: turn it clockwise. With auto-rotate
+on, the window becomes landscape at that moment and the turn stops applying.
+
+Two things this does not reach, both because they are not the app's window:
+anything Android draws itself, such as the pinning notice, and Compose's dialogs
+and menus. That is why it wraps the board rather than the whole app — and the
+list screens were never wrong in portrait anyway.
+
+Turning the tablet no longer restarts anything either. It used to: the activity
+was recreated, and the board came back on its start page with the sentence bar
+empty. The app now handles the configuration change itself.
 
 ## Licence
 

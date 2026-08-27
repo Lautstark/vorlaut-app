@@ -24,8 +24,23 @@
         android:theme="@style/Theme.Vorlaut"
         tools:targetApi="33">
 
+        <!--
+          Turning the tablet must not restart the app. Without this Android
+          destroys and recreates the activity on every rotation, and the board
+          comes back on its start page with the sentence bar empty: `route` and
+          `opened` in MainActivity are composition state, so a recreation sends
+          the front-door effect round again and reopens the package from the
+          top. A child mid-sentence whose tablet gets picked up loses the
+          sentence.
+
+          Handling the change ourselves is honest rather than a dodge, because
+          there is nothing left for Android to do about it: AlwaysLandscape
+          draws the board landscape whatever shape the window is, and no
+          resource here is qualified by orientation. Compose simply remeasures.
+        -->
         <activity
             android:name=".MainActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
