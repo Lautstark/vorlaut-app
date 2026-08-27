@@ -239,11 +239,46 @@ private fun ButtonCell(
      * keeps its paper and its word — so it does take the wedge, because on that
      * cell nothing else says the page is about to change.
      */
-    val wedge =
-        when {
-            button.onActivate is OnActivate.Navigation && !chrome -> Wedge.Onward
-            button.onActivate == OnActivate.SpeakImmediately -> Wedge.Sound
-            else -> null
+    val wedge: Wedge? =
+        when (button.onActivate) {
+            OnActivate.Home, is OnActivate.Navigate -> {
+                if (chrome) null else Wedge.Onward
+            }
+
+            // A carrier phrase is a word that also turns the page, so it is a
+            // way onward and wears the wedge. It is deliberately not an
+            // `OnActivate.Navigation` — see the note on AppendThenNavigate,
+            // which exists so that sites which must not treat it as plain
+            // navigation are asked. This `when` is exhaustive for the same
+            // reason: the first version of it tested `is Navigation`, which
+            // silently skipped every carrier phrase on the board.
+            is OnActivate.AppendThenNavigate -> {
+                Wedge.Onward
+            }
+
+            OnActivate.SpeakImmediately -> {
+                Wedge.Sound
+            }
+
+            // An `actions` array, whose meaning SPEC.md 7.4 does not define and
+            // which no fixture exercises. Marked by what it contains rather
+            // than by what it is: if one of its members turns the page, the
+            // press turns the page, and that is the fact the wedge states.
+            is OnActivate.Sequence -> {
+                when {
+                    (button.onActivate as OnActivate.Sequence).actions.any {
+                        it is OnActivate.Navigation || it is OnActivate.AppendThenNavigate
+                    } -> Wedge.Onward
+
+                    else -> null
+                }
+            }
+
+            OnActivate.Append, OnActivate.SpeakBar, OnActivate.Clear,
+            OnActivate.Backspace, OnActivate.Disabled,
+            -> {
+                null
+            }
         }
 
     Box(
@@ -468,10 +503,12 @@ private fun describe(
     if (voiceless) append(", ohne Aufnahme")
     // The same two facts the wedges carry. A mark that only exists in the
     // drawing is a mark that half the people this app is for cannot have.
-    when {
-        button.onActivate == OnActivate.Home -> append(", zur Startseite")
-        button.onActivate is OnActivate.Navigation -> append(", öffnet eine Seite")
-        button.onActivate == OnActivate.SpeakImmediately -> append(", spricht sofort")
+    when (button.onActivate) {
+        OnActivate.Home -> append(", zur Startseite")
+        is OnActivate.Navigate -> append(", öffnet eine Seite")
+        is OnActivate.AppendThenNavigate -> append(", und öffnet eine Seite")
+        OnActivate.SpeakImmediately -> append(", spricht sofort")
+        else -> Unit
     }
 }
 
