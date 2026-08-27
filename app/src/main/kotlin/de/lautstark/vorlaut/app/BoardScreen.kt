@@ -24,10 +24,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
@@ -221,12 +223,41 @@ private fun ButtonCell(
      */
     val chrome = button.onActivate == OnActivate.Home && fill == null && edge == null
 
+    /* What this press does, where it is not what a press ordinarily does.
+     *
+     * Appending is the common case and carries no mark: marking every ordinary
+     * cell would make the marks worth nothing. That is the editor's rule and it
+     * governs here too, so exactly two facts are left to say.
+     *
+     * The seats are the editor's as well — left is the sound, right is the way
+     * onward — so a page marked in one tool reads the same in the other.
+     *
+     * A navigation drawn as [chrome] is left alone. The plate already says the
+     * press changes the page, and better than a corner does; a wedge on top
+     * would be two marks for one fact, which is the mistake the editor has
+     * already had to undo once. AppendThenNavigate(Home) is not chrome — it
+     * keeps its paper and its word — so it does take the wedge, because on that
+     * cell nothing else says the page is about to change.
+     */
+    val wedge =
+        when {
+            button.onActivate is OnActivate.Navigation && !chrome -> Wedge.Onward
+            button.onActivate == OnActivate.SpeakImmediately -> Wedge.Sound
+            else -> null
+        }
+
     Box(
         Modifier
             .fillMaxSize()
             .clip(radius)
             .background(if (chrome) VorlautBoard.barPlate else fill ?: VorlautBoard.paper)
+            // The plate is 1.41:1 against the ground and cannot be made to
+            // clear 1.4.11's 3:1 by any darker shade — see chromeEdge, which
+            // carries the whole argument and the measurement. The bar's four
+            // controls wear the same hairline for the same reason.
+            .then(if (chrome) Modifier.border(1.5.dp, VorlautBoard.chromeEdge, radius) else Modifier)
             .then(if (edge != null) Modifier.border(4.dp, edge, radius) else Modifier)
+            .then(wedge?.let { Modifier.drawWedge(it, VorlautBoard.ink, wedgeSide(cell)) } ?: Modifier)
             .then(
                 // The speaking mark is the loudest thing on the button while it
                 // lasts, because it answers "did it hear me" — the question a
@@ -379,6 +410,49 @@ private fun DisabledCross(modifier: Modifier) {
     )
 }
 
+/** Which corner a wedge sits in, and therefore which fact it states. */
+private enum class Wedge { Sound, Onward }
+
+/**
+ * How large a wedge is: with the cell, like the label, and bounded at both
+ * ends. A fixed size is a speck on a 3x5 board and half the tile on a 6x11.
+ */
+private fun wedgeSide(cell: Dp) = (cell.value * 0.17f).coerceIn(14f, 30f).dp
+
+/**
+ * The mark itself: a right triangle in the cell's own corner.
+ *
+ * In [VorlautBoard.ink] at full strength, which is the same ink the word is
+ * set in and is not a stylistic choice. Measured against the ten Fitzgerald
+ * fills a cell can wear: at 55% opacity `place` falls to 2.91:1 and misses the
+ * 3:1 a non-text graphic needs, while full strength is 7.38:1 at its worst.
+ *
+ * Drawn before the cell's padding is applied, so it reaches the true corner,
+ * and after the clip, so it takes the tile's own rounding.
+ */
+private fun Modifier.drawWedge(
+    wedge: Wedge,
+    colour: Color,
+    side: Dp,
+) = drawWithContent {
+    drawContent()
+    val s = side.toPx()
+    val path =
+        Path().apply {
+            if (wedge == Wedge.Onward) {
+                moveTo(size.width, 0f)
+                lineTo(size.width - s, 0f)
+                lineTo(size.width, s)
+            } else {
+                moveTo(0f, 0f)
+                lineTo(s, 0f)
+                lineTo(0f, s)
+            }
+            close()
+        }
+    drawPath(path, colour)
+}
+
 private fun describe(
     button: Button,
     degraded: Boolean,
@@ -392,6 +466,13 @@ private fun describe(
     if (disabled) append(", nicht verfügbar")
     if (degraded) append(", unvollständig")
     if (voiceless) append(", ohne Aufnahme")
+    // The same two facts the wedges carry. A mark that only exists in the
+    // drawing is a mark that half the people this app is for cannot have.
+    when {
+        button.onActivate == OnActivate.Home -> append(", zur Startseite")
+        button.onActivate is OnActivate.Navigation -> append(", öffnet eine Seite")
+        button.onActivate == OnActivate.SpeakImmediately -> append(", spricht sofort")
+    }
 }
 
 /** Whether a press on this button is meant to make a sound at all. */
