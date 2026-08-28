@@ -1,5 +1,6 @@
 package de.lautstark.vorlaut.app.design
 
+import android.provider.Settings
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -26,11 +27,13 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
@@ -126,7 +129,22 @@ fun Btn(
  *
  * [busy] puts the same line to work while something is still happening, which
  * is the one case the notice could not cover: reading a large `.obz` took long
- * enough to look like nothing had happened at all.
+ * enough to look like nothing had happened at all. "Large" is measurable: a
+ * package of 6.7 MB — 19 boards, 117 images and 102 recordings — is the size
+ * that makes it visible. Below roughly that, a package imports faster than the
+ * notice renders and the state never appears.
+ *
+ * **[busy] is deliberately ours and not the family's, and this is the exception
+ * saying so.** `Lautstark/design`'s `docs/components.css` has the plate and, as
+ * of v1.17.0, the dismiss below; it does not have this, and the gap is a
+ * decision rather than drift. Two reasons, both recorded in design.md §4.3.
+ * §4.3 sends progress to "the control that started it", so a busy outcome line
+ * is a second *kind* of message on this plate — a change to that taxonomy, not
+ * a missing rule under it. And it would be the first animation in a file whose
+ * motion budget §4.2 closes at 130ms for colour and 220ms for size or position,
+ * "nothing else"; an indeterminate loop is neither. Neither bildhaft nor
+ * mitreden has a long operation that would spend either. If a second product
+ * grows one, that is the evidence to reopen it with — one product is not.
  *
  * [onDismiss] adds the way out. "Stays until something replaces it" was written
  * about a line that reports a refusal, and it is right about that one; applied
@@ -175,9 +193,29 @@ fun Notice(
  * that size is a smudge. There is no percentage to show — the reader is a
  * stream and the total is not known until it ends — so it says *working*, not
  * *how far*, and never pretends to the second.
+ *
+ * ## Somebody who has turned animations off gets no bar at all
+ *
+ * Not a frozen one, and that follows from the paragraph above rather than from
+ * caution. This bar's thumb sits at 45% of the track; held still it is exactly
+ * the shape of a determinate bar reporting 45%, which is the one thing this
+ * component promises never to say. A still indeterminate bar does not degrade
+ * into a quieter version of itself — it degrades into a lie.
+ *
+ * Nothing is lost by dropping it, because the sentence beside it was always
+ * carrying the message: „„Kernvokabular" wird empfangen …" and then
+ * „„Kernvokabular" empfangen." differ in words, not only in whether something
+ * is moving. That is what putting this on the outcome plate bought.
+ *
+ * `rememberInfiniteTransition` does not consult the setting itself — it runs
+ * off `withInfiniteAnimationFrameNanos`, which the `MotionDurationScale` that
+ * scales ordinary animations does not reach — so an infinite loop keeps
+ * running at full speed on a device set to "Remove animations". Reading the
+ * setting is the whole fix, and it has to be read rather than assumed.
  */
 @Composable
 private fun Ticker(ink: Color) {
+    if (animationsOff()) return
     val cycle = rememberInfiniteTransition(label = "ticker")
     val at by cycle.animateFloat(
         initialValue = -0.45f,
@@ -201,6 +239,29 @@ private fun Ticker(ink: Color) {
                 .clip(RoundedCornerShape(999.dp))
                 .background(ink),
         )
+    }
+}
+
+/**
+ * Whether this device has been told to stop animating things.
+ *
+ * `ANIMATOR_DURATION_SCALE` at zero is what Android's own "Remove animations"
+ * accessibility toggle writes, and it is the platform's answer to the web's
+ * `prefers-reduced-motion` — the two products next door already honour that,
+ * and this is the same promise kept on the same person's other device. It
+ * matters more here than the phrasing suggests: these tablets belong to people
+ * who did not choose their hardware, and somebody who turned that switch on
+ * because motion makes them ill is not helped by an exception that loops for as
+ * long as a package takes to arrive.
+ *
+ * Read once per composition and remembered. Changing the setting restarts the
+ * activity, so there is no case where this needs to be observed live.
+ */
+@Composable
+private fun animationsOff(): Boolean {
+    val resolver = LocalContext.current.contentResolver
+    return remember(resolver) {
+        Settings.Global.getFloat(resolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
     }
 }
 
