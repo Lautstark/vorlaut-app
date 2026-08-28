@@ -210,6 +210,35 @@ class PackageReceiverTest {
         }
     }
 
+    /**
+     * A refusal must survive the close, and this is the test that says so.
+     *
+     * 415 and 413 both answer without reading the body, deliberately — the media
+     * type is wrong before the body matters, and refusing on the declared length
+     * is what keeps an oversized package off the tablet entirely. That leaves
+     * unread bytes in the receive buffer, and closing a socket in that state
+     * makes the OS send RST rather than FIN. An RST tells the peer to discard
+     * what is already in *its* receive buffer — which is the refusal we just
+     * wrote, so the sender meets a connection reset instead of being told what
+     * was wrong.
+     *
+     * A megabyte, because the bug is a race that a four-byte body usually wins:
+     * it survived a full green build and only showed up later, in a different
+     * test, once. This is here so that whoever decides `linger` looks
+     * unnecessary finds out why it is not.
+     */
+    @Test
+    fun `a refusal still arrives when the body was never read`() {
+        serving(max = 1024 * 1024) { port ->
+            val answer = post(port, ByteArray(1024 * 1024), "text/plain")
+            assertEquals("415", answer.status)
+            assertTrue(
+                "the refusal must carry its code, was ${answer.body}",
+                answer.body.contains("\"reason\":\"${PackageReceiver.Codes.WRONG_MEDIA_TYPE}\""),
+            )
+        }
+    }
+
     @Test
     fun `a package past the ceiling is refused on its declared length`() {
         var reached = false

@@ -185,14 +185,63 @@ class PackageReceiver(
         try {
             val input = connection.getInputStream().buffered()
             val out = BufferedOutputStream(connection.getOutputStream())
-            val request =
-                readHead(input)
-                    ?: return respond(out, 400, refusal(Codes.UNREADABLE_REQUEST, "the request could not be read"))
-            route(input, out, request)
+            val request = readHead(input)
+            if (request == null) {
+                respond(out, 400, refusal(Codes.UNREADABLE_REQUEST, "the request could not be read"))
+            } else {
+                route(input, out, request)
+            }
             out.flush()
+            linger(connection, input)
         } catch (_: IOException) {
             // A sender that hung up, or a read that timed out. There is nothing
             // to say to a socket that is no longer there.
+        }
+    }
+
+    /**
+     * Read and throw away whatever the sender is still pushing, before the
+     * socket closes.
+     *
+     * **Without this the refusals lose their own response.** Closing a socket
+     * that still has unread bytes in its receive buffer makes the OS send an
+     * RST rather than a FIN, and an RST tells the peer to discard what is
+     * already sitting in *its* receive buffer — which is the reply we just
+     * wrote. So a sender meets a connection reset instead of the 415 or 413
+     * explaining what was wrong.
+     *
+     * It bites exactly the two refusals that answer without reading the body,
+     * and both do that deliberately: 415 because the media type is wrong before
+     * the body matters, and 413 because refusing on the declared length is the
+     * whole point — the package must not land on the tablet at all. Neither is
+     * going to start reading the body, so the drain happens after the answer
+     * instead.
+     *
+     * Bounded, in bytes and in time. This is politeness to a sender that made a
+     * mistake, and a sender pushing 200 MB at a 413 is not owed it for as long
+     * as it cares to keep pushing; past the bound it gets the reset, having
+     * already been told why in a response it may or may not still hold. nginx
+     * calls the same manoeuvre lingering_close.
+     */
+    private fun linger(
+        connection: Socket,
+        input: InputStream,
+    ) {
+        try {
+            // Shorter than the request timeout: a sender that has been refused
+            // and has gone quiet should not hold the one connection for another
+            // minute on the chance that it speaks again.
+            connection.soTimeout = LINGER_TIMEOUT_MS
+            val scratch = ByteArray(8 * 1024)
+            var drained = 0L
+            while (drained < LINGER_BYTES) {
+                val read = input.read(scratch)
+                if (read < 0) return
+                drained += read
+            }
+        } catch (_: IOException) {
+            // The sender stopped talking, or the shortened timeout expired.
+            // Both are the outcome this was hoping for.
         }
     }
 
@@ -447,5 +496,16 @@ class PackageReceiver(
 
         private const val MAX_LINE = 8 * 1024
         private const val READ_TIMEOUT_MS = 60_000
+
+        /**
+         * How much of a refused sender's body to read and discard so that it
+         * can read the refusal. Generous enough for a package sent with the
+         * wrong media type, bounded so that a runaway sender cannot hold the
+         * one connection open by continuing to talk.
+         */
+        private const val LINGER_BYTES = 4L * 1024 * 1024
+
+        /** And for how long, once it has gone quiet. */
+        private const val LINGER_TIMEOUT_MS = 2_000
     }
 }
