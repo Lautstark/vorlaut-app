@@ -1,17 +1,54 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  There is deliberately no <uses-permission android:name="android.permission.INTERNET" />
-  in this file, and there must never be one. SPEC.md 1 and 5 make "resolves no
-  reference" a property of the format rather than a habit of the code: every image
-  and every sound is baked into the package, so a viewer that cannot reach the
-  network is a viewer that cannot silently start depending on one.
+  This app can open a socket, and this comment used to say it never would. What
+  changed and what did not is the whole of the note.
 
-  This is also what makes SPEC.md 5.2 enforceable. A non-redistributable package
-  must never have its bytes leave the device, and the cheapest way to guarantee
-  that is an app with no way to send them.
+  <uses-permission android:name="android.permission.INTERNET" /> is below because
+  a Sammlung can now arrive from the editor over the home network instead of on a
+  memory stick. SPEC.md 5.2's sanctioned case is a METACOM licensee preparing
+  material "for the person they support" and putting it "on that person's
+  device" — which is the direction that permission is here to serve, and the only
+  direction PackageReceiver runs.
+
+  WHAT THIS COST. The old argument was structural and it was a good one: a viewer
+  with no INTERNET permission cannot move a non-redistributable package's bytes
+  off the device, because it cannot move bytes anywhere. That guarantee is gone
+  and cannot be got back by wording. Anyone reading this to find out whether
+  SPEC.md 5.2 is still enforceable here deserves the narrower claim rather than
+  the old one restated.
+
+  WHAT IS TRUE INSTEAD. The app receives a package and has no code path that
+  sends one. Concretely, and each part is checkable:
+
+    - PackageReceiver is a server and there is no client. Nothing in this app
+      opens an outbound connection, builds a URL, or reads a response; the
+      permission buys a listening socket and is spent entirely on that. Note
+      that android:usesCleartextTraffic is deliberately *not* set: it governs
+      the platform's HTTP client stacks, a raw ServerSocket is unaffected by it,
+      and setting it would be claiming a client this app does not have.
+    - That socket has exactly one route. POST /paket, plus the OPTIONS a browser
+      sends before it. No GET, no listing, no path that returns a package's bytes
+      or its metadata — a socket that could serve them is precisely the path
+      5.2 forbids.
+    - The socket is open only while the receive screen is on screen. No
+      foreground service; bound on entering, closed on leaving and on
+      backgrounding, so nothing is listening while a child is using the board.
+
+  WHAT KEEPS IT TRUE. PackageReceiverTest sweeps every method against the route
+  and every plausible path against the router, and fails if anything but the one
+  POST is served. The guarantee moved from "structurally impossible" to "one
+  route, POST only, enforced by a test", and that test is the load-bearing part
+  of this comment. Adding a second route means editing it, which is the point.
+
+  The other half of the old note still stands and is untouched by any of this:
+  SPEC.md 1 and 5 make "resolves no reference" a property of the format, every
+  image and every sound is baked into the package, and nothing here fetches
+  anything at render time — because nothing here fetches anything at all.
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <application
         android:allowBackup="false"

@@ -84,4 +84,19 @@
     <string name="warning_at_package">whole collection · %1$s</string>
     <string name="warning_at_board">board %1$s · %2$s</string>
     <string name="warning_at_button">board %1$s · button %2$s · %3$s</string>
+
+    <string name="add_where_from">Where does it come from?</string>
+    <string name="add_from_file">Fetch it from this tablet</string>
+    <string name="add_from_file_sub">A file that is already here</string>
+    <string name="add_from_network">Receive it from a computer</string>
+    <string name="add_from_network_sub">Over wifi, straight from the editor</string>
+
+    <string name="receive_where">Receive from a computer</string>
+    <string name="receive_waiting">Waiting for a package.</string>
+    <string name="receive_hint">Type this address into the editor. This tablet accepts packages for as long as this screen is open.</string>
+    <string name="receive_running">A package is arriving …</string>
+    <string name="receive_running_hint">%1$d MB. The tablet can be left where it is.</string>
+    <string name="receive_port_busy">This tablet cannot accept anything right now.</string>
+    <string name="receive_port_busy_hint">Another program is holding the port that packages arrive on. Closing and reopening the app usually frees it.</string>
+    <string name="receive_no_network">This tablet is on no network. Without wifi there is no address for the editor to send to.</string>
 </resources>

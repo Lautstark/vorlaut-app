@@ -48,6 +48,15 @@ private sealed interface Route {
 
     data object Sammlungen : Route
 
+    /**
+     * The listening screen, and it is a route rather than a sheet for one
+     * reason: the socket is open for exactly as long as it is on screen, so
+     * "where the app is" and "whether this tablet answers on the network" have
+     * to be the same fact. A sheet that could be left half-open behind a list
+     * would separate them.
+     */
+    data object Empfangen : Route
+
     data object Settings : Route
 }
 
@@ -69,6 +78,10 @@ class MainActivity : ComponentActivity() {
 
             var route by remember { mutableStateOf<Route>(Route.Sammlungen) }
             var opened by remember { mutableStateOf(false) }
+
+            // „Sammlung hinzufügen" asks which way first. There are two now and
+            // only one of them is a file.
+            var choosingWay by remember { mutableStateOf(false) }
 
             // The same value as handover.lastPackageId, held where Compose can
             // see it change: the preference is a plain var and writing to it
@@ -163,7 +176,7 @@ class MainActivity : ComponentActivity() {
                             SammlungenScreen(
                                 state = state,
                                 currentId = opensNextId,
-                                onAdd = { picker.launch(IMPORTABLE_TYPES) },
+                                onAdd = { choosingWay = true },
                                 onOpen = { entry ->
                                     handover.lastPackageId = entry.boardPackage.id
                                     opensNextId = entry.boardPackage.id
@@ -187,6 +200,28 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
+                        Route.Empfangen -> {
+                            // Back leaves the screen, which closes the port —
+                            // the same way every other exit from here does.
+                            BackHandler(enabled = true) {
+                                model.stopReceiving()
+                                route = Route.Sammlungen
+                            }
+                            EmpfangenScreen(
+                                state = state,
+                                onArriving = model::receiving,
+                                onPackage = model::receive,
+                                // Back to the list, where the outcome line
+                                // already lives: this screen has one job, and a
+                                // package that has landed is no longer it.
+                                onLanded = { route = Route.Sammlungen },
+                                onBack = {
+                                    model.stopReceiving()
+                                    route = Route.Sammlungen
+                                },
+                            )
+                        }
+
                         Route.Settings -> {
                             // The device's own Back left the app from here,
                             // because only the board had ever claimed it.
@@ -204,6 +239,20 @@ class MainActivity : ComponentActivity() {
                                 onBack = { route = Route.Sammlungen },
                             )
                         }
+                    }
+
+                    if (choosingWay) {
+                        AddSheet(
+                            onFromFile = {
+                                choosingWay = false
+                                picker.launch(IMPORTABLE_TYPES)
+                            },
+                            onFromNetwork = {
+                                choosingWay = false
+                                route = Route.Empfangen
+                            },
+                            onDismiss = { choosingWay = false },
+                        )
                     }
 
                     prompt?.let { purpose ->
