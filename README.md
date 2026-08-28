@@ -33,6 +33,10 @@ against the router, and fails if anything but the one `POST` is served. The
 guarantee moved from *structurally impossible* to *one route, POST only, enforced
 by a test* — deliberately, and with the test as the load-bearing part.
 
+What a test on the JVM cannot check is a tablet, a laptop and a home network.
+[`docs/receiving-a-package.md`](docs/receiving-a-package.md) is the checklist for
+that half, and records what one run of it found.
+
 The DIY ESP32 talker lives in [`Lautstark/vorlaut-diy-talker`](https://github.com/Lautstark/vorlaut-diy-talker)
 and is a different thing with a different board model. Nothing here reads its
 format.
