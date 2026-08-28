@@ -211,10 +211,41 @@ class MainActivity : ComponentActivity() {
                                 state = state,
                                 onArriving = model::receiving,
                                 onPackage = model::receive,
-                                // Back to the list, where the outcome line
-                                // already lives: this screen has one job, and a
-                                // package that has landed is no longer it.
-                                onLanded = { route = Route.Sammlungen },
+                                onLanded = {
+                                    /*
+                                     * Back to the list, where the outcome line
+                                     * already lives: this screen has one job,
+                                     * and a package that has landed is no
+                                     * longer it.
+                                     *
+                                     * `opened` is latched here so that the
+                                     * front door above does not immediately
+                                     * take the route away again. It is guarded
+                                     * by `opened || state.stored.isEmpty()`,
+                                     * so on a device that already has a
+                                     * Sammlung it ran at startup and cannot
+                                     * fire twice — but on a device with none
+                                     * the guard never releases, and the first
+                                     * thing to make the list non-empty trips
+                                     * it. That thing is now an arriving
+                                     * package, so a first receive on a fresh
+                                     * install went list → board before anybody
+                                     * could read what had happened.
+                                     *
+                                     * Suppressed for this transition only, and
+                                     * only in this session. The front door is
+                                     * right about what it is for — a child
+                                     * picking the tablet up gets a board — but
+                                     * a package that arrived over the network
+                                     * was sent by an adult at a laptop who is
+                                     * watching this screen, and hiding the
+                                     * confirmation from the person who just
+                                     * pressed send is precisely backwards. The
+                                     * next start opens the board as always.
+                                     */
+                                    opened = true
+                                    route = Route.Sammlungen
+                                },
                                 onBack = {
                                     model.stopReceiving()
                                     route = Route.Sammlungen
