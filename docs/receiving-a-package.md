@@ -81,6 +81,12 @@ seeing rather than trusting.
   screen.
 - Leave with Zurück and send again: must fail.
 
+Run the Home half **from the receive screen, not from the board.** Accepting
+Android's „App ist auf dem Bildschirm fixiert" dialog turns pinning on for
+real, and Home is then blocked — so on a tablet where somebody has pressed Ok
+the test cannot be performed from a pinned board. The receive screen is not
+pinned. Sequencing, not a defect.
+
 ## 6. Refusals arrive as codes
 
 Rename any `.zip` and send it.
@@ -123,6 +129,32 @@ device. Worth knowing before starting rather than during.
   `192.168.0.197` pinged 3/3, average 119 ms — high for a LAN, and worth
   allowing for when reading the timing in item 3, because it is the wifi rather
   than this code.
+- **1 also found a real defect, since fixed.** On that fresh install the first
+  received package went straight to the board with Android's pinning dialog over
+  it, and „… hinzugefügt" was never seen. The run produced its own control by
+  accident: a second send, with one Sammlung now present, stayed on the list and
+  showed its outcome line correctly. Same code, same package, different starting
+  state. The cause was the front door in `MainActivity` — guarded by
+  `opened || state.stored.isEmpty()`, it cannot fire twice on a device that
+  already has a Sammlung, but on a device with none the guard never releases and
+  the first thing to make the list non-empty trips it. `onLanded` now latches
+  `opened`, so an arriving package does not.
+
+  Worth keeping in mind when re-running this list: **a genuinely empty device is
+  a different code path**, and it is the one a first-time user is on. Testing
+  only on a tablet that already has Sammlungen would have missed this
+  completely.
+- **4 — passed.** `already_current` reads as a fact rather than a failure on
+  both sides, and nothing changed on the tablet. The dismiss ✕ renders correctly
+  on the device.
+- **5 — half passed.** Leaving the board by the handle and re-entering through
+  Sammlung hinzufügen → Vom Rechner empfangen brought the address back and the
+  send was accepted, so the socket does restart on re-entry.
 - Noted in passing: the dimming earns its keep. On a `192.168.0.x` network the
   third octet is not the Fritzbox `178`, so two numbers have to be copied — and
   both of the ones that move are the two drawn at full strength.
+- Also noted: the first person to meet the receive screen tried to **edit** the
+  address. It is a readout — the tablet reports what the router gave it — but
+  both sentences around it („Wartet auf ein Paket.", „Diese Adresse im Editor
+  eintragen.") are instructions, and neither says whose address it is. Left
+  open deliberately rather than fixed in a hurry.
