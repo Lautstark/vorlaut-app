@@ -118,4 +118,32 @@
     <string name="warning_at_package">ganze Sammlung · %1$s</string>
     <string name="warning_at_board">Tafel %1$s · %2$s</string>
     <string name="warning_at_button">Tafel %1$s · Taste %2$s · %3$s</string>
+
+    <!--
+      Die zwei Wege herein, gefragt vor der Dateiauswahl und nicht statt ihr.
+      Die zweite Zeile trägt jeweils den Unterschied: er liegt darin, *wo* die
+      Sammlung ist, nicht darin, was mit ihr geschieht.
+    -->
+    <string name="add_where_from">Woher kommt sie?</string>
+    <string name="add_from_file">Vom Tablet holen</string>
+    <string name="add_from_file_sub">Eine Datei, die schon hier liegt</string>
+    <string name="add_from_network">Vom Rechner empfangen</string>
+    <string name="add_from_network_sub">Über das WLAN, direkt aus dem Editor</string>
+
+    <string name="receive_where">Vom Rechner empfangen</string>
+    <string name="receive_waiting">Wartet auf ein Paket.</string>
+    <string name="receive_hint">Diese Adresse im Editor eintragen. Solange dieser Bildschirm offen ist, nimmt das Tablet Pakete an.</string>
+    <!--
+      „Ein Paket“ und nicht sein Name, und das ist so gezeichnet (design 4c72d40).
+      Ein Name im Kopf der Anfrage wäre eine Behauptung des Absenders; der Name
+      im Paket ist die Tatsache. Erst die Behauptung zu zeigen und eine Sekunde
+      später die Tatsache ist der Weg, auf dem ein Bildschirm sich selbst
+      widerspricht. Die Größe steht im Kopf der Anfrage und ist das, was sich
+      vorher ehrlich sagen lässt; den Namen sagt die Ergebniszeile danach.
+    -->
+    <string name="receive_running">Ein Paket wird empfangen …</string>
+    <string name="receive_running_hint">%1$d MB. Das Tablet kann liegen bleiben.</string>
+    <string name="receive_port_busy">Dieses Tablet kann gerade nichts annehmen.</string>
+    <string name="receive_port_busy_hint">Ein anderes Programm belegt den Anschluss, über den Pakete ankommen. Meist hilft es, die App zu schließen und neu zu öffnen.</string>
+    <string name="receive_no_network">Dieses Tablet ist in keinem Netzwerk. Ohne WLAN gibt es keine Adresse, die im Editor stehen könnte.</string>
 </resources>

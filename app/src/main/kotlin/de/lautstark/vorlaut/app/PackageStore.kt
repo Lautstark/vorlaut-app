@@ -15,8 +15,13 @@ import java.time.Instant
  *
  * Everything lands under the app's own files directory, which is what makes the
  * viewer's promise keepable: SPEC.md 5.2 says a non-redistributable package must
- * not take any path that moves its bytes off the device, and app-private storage
- * plus no network permission plus no backup leaves no such path.
+ * not take any path that moves its bytes off the device.
+ *
+ * "Plus no network permission" used to be the third clause here and is not true
+ * any more — the app takes a package over the LAN now. What is left is
+ * app-private storage, no backup, and a receiver with one route that only goes
+ * inwards; see AndroidManifest.xml, which carries the whole of that argument,
+ * and PackageReceiverTest, which is what holds it.
  */
 class PackageStore(
     private val root: File,

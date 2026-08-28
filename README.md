@@ -3,12 +3,35 @@
 The Android viewer for Lautstark board packages. It imports a `.obz` package and
 renders it. That is all it does.
 
-**A pure viewer.** No editing, no symbol search, and no network access — there is
-no `INTERNET` permission in the manifest and there must never be one. Every image
-and every sound a board needs is baked into the package it came in, which is what
-makes "resolves no reference" a property of the format rather than a habit of the
-code. It is also what makes the non-redistributable rule enforceable: a package
-whose bytes must not leave the device is safest in an app that cannot send them.
+**A pure viewer.** No editing and no symbol search. Every image and every sound
+a board needs is baked into the package it came in, which is what makes "resolves
+no reference" a property of the format rather than a habit of the code — nothing
+here fetches anything at render time, because nothing here fetches anything.
+
+**It receives, and it cannot send.** There *is* an `INTERNET` permission in the
+manifest now, so that a Sammlung can arrive from the editor over the home network
+rather than on a memory stick. That sentence replaces a stronger one. This
+README used to say there was no such permission and there must never be one, and
+the reason given was that a viewer which cannot reach the network cannot move a
+non-redistributable package's bytes off the device — `exchange/SPEC.md` §5.2.
+That argument was structural and it is gone; what stands in its place is
+narrower, and is the honest version:
+
+- **There is no client.** `PackageReceiver` is a server. Nothing in this app
+  opens an outbound connection, builds a URL, or reads a response.
+- **There is one route.** `POST /paket`, plus the `OPTIONS` a browser sends
+  before it. No `GET`, no listing, no path that hands back a package's bytes or
+  its metadata — a socket able to serve them is exactly the path §5.2 forbids.
+- **It is open only while somebody is watching it.** The listener is bound when
+  the receive screen appears and closed when it is left or the app is
+  backgrounded. No foreground service, and no port open while a child is using
+  the board.
+
+`PackageReceiverTest` is what keeps that true after everyone who agreed to it has
+gone: it sweeps every HTTP method against the route and every plausible path
+against the router, and fails if anything but the one `POST` is served. The
+guarantee moved from *structurally impossible* to *one route, POST only, enforced
+by a test* — deliberately, and with the test as the load-bearing part.
 
 The DIY ESP32 talker lives in [`Lautstark/vorlaut-diy-talker`](https://github.com/Lautstark/vorlaut-diy-talker)
 and is a different thing with a different board model. Nothing here reads its
