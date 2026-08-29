@@ -114,6 +114,27 @@ within the hour, and the alternative is standing on their work.
 Then remove the worktree and delete the branch, so rule 1's dashboard stays
 true.
 
+## Commit subjects are conventional, and CI checks them
+
+`feat:`, `fix:`, `docs:` and the rest, in front of the sentence you were going
+to write anyway. `.github/workflows/commit-messages.yml` checks every commit in
+every push, on every branch — so a subject without a prefix fails after the
+push, when the fix is a rebase.
+
+Turn the hook on once per clone, and it tells you while the message is still in
+the editor instead:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+Worktrees inherit it, so once covers all of them. A fresh clone starts without
+it, which is exactly why the gate is in CI and not in the hook. Both call
+`tools/check-commit-subject.sh`, so they cannot answer differently.
+
+Commits from before 2026-08-29 are not held to it: the workflow skips any commit
+whose tree does not contain that script.
+
 ## What the build needs
 
 There is no system JDK on the development machine. Android Studio's bundled
