@@ -1,0 +1,64 @@
+// Renovate, for this repository.
+//
+// Everything general - when updates arrive, what groups with what, what may
+// merge itself - lives in Lautstark/.github and names no package. This file is
+// the part that is true of this repository and of no other.
+//
+// The .json5 is spelled out on purpose: the //path/to/file syntax implies a
+// .json extension, so omitting it looks for a file that is not there and
+// Renovate stops before it does anything. The shorter "owner/repo:name" form
+// implies it too.
+//
+// ---------------------------------------------------------------------------
+// WHAT THE SHARED PRESET COVERS HERE, AND WHAT IT SAYS IT DOES NOT
+//
+// The preset's own header says: "NOT COVERED: Gradle, Kotlin, Android. The
+// Android repository does not exist yet, and a preset written against a guess
+// about its build is a preset that will be wrong when it arrives."
+//
+// It has arrived, and the note turns out to have been about the wrong half.
+// Nothing in the preset is npm-specific: the schedule, the dependency
+// dashboard, the dev-versus-runtime split, the major-on-its-own rule and the
+// vulnerability handling are all written against `matchDepTypes` and
+// `matchUpdateTypes`, which the Gradle manager populates the same way. So
+// extending it is right and adds no Gradle rules by omission.
+//
+// What is genuinely absent is a *Lautstark* opinion about Gradle, and there is
+// none to write yet. When one appears - a Kotlin/AGP pairing that has to move
+// together, say - it belongs here first and moves to the preset only once a
+// second repository needs it.
+//
+// ---------------------------------------------------------------------------
+// TWO PINS RENOVATE DOES NOT SEE, NAMED SO NOBODY ASSUMES IT DOES
+//
+// This is the reason this file is not one line. Both are real version pins,
+// both go stale silently, and neither is a dependency any manager recognises:
+//
+//   gradle.properties: exchange.sha
+//     The conformance fixtures, pinned to a commit in
+//     Lautstark/vorlaut-diy-talker and fetched at build time. A bare SHA in a
+//     properties file - no manager reads it, and no custom manager is
+//     configured for it deliberately. docs/exchange-pin.md explains why:
+//     moving it is a decision about which revision of the spec this viewer
+//     claims to meet, and the suite failing is how that decision gets made.
+//     A pull request that merged itself on a Monday morning would be the
+//     wrong shape for it, the same way @lautstark/* bumps are elsewhere.
+//
+//   app/src/main/kotlin/de/lautstark/vorlaut/app/design/
+//     The design tokens, a port of Lautstark/design rather than a dependency
+//     on it. Tokens.kt names its source and the accent it was generated from,
+//     which is the provenance Lautstark/design's own conventions.md §7 asks
+//     for - but no version, because a generated file may not carry one. In the
+//     three browser products the version lives in the pin in package.json, and
+//     `pins.js` reads it and says which pins are behind. There is no pin here
+//     to read. So this port going stale is the one drift in the family that
+//     nothing reports, and no Renovate configuration can be the thing that
+//     changes that.
+//
+// Neither is a rule Renovate could carry. They are here because a renovate.json5
+// reads as "these are the dependencies, and they are watched", and in this
+// repository two of the things most worth watching are outside it.
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  extends: ["github>Lautstark/.github//renovate-shared.json5"],
+}
