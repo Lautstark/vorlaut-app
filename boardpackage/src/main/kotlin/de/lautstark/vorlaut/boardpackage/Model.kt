@@ -51,10 +51,53 @@ data class BoardPackage(
      * written against 1.0.0.
      */
     val firstColumnGap: Boolean,
+    /**
+     * SPEC.md 4.1 and 7.5: how long a press must rest on a button before it
+     * counts, in milliseconds. 0 is off, and 0 is what a manifest saying nothing
+     * means.
+     *
+     * Already clamped and sanitised — see [pressTiming]. A reader downstream of
+     * this may treat it as a plain number of milliseconds in 0..2000 and needs
+     * no defensive arithmetic of its own.
+     *
+     * This and [releaseTimeMs] are the only two things a package carries that
+     * describe the *person* rather than the board. They are the author's
+     * default and deliberately not the last word: SPEC.md 4.1 says a viewer
+     * with its own setting should let that win, which is what the Einstellungen
+     * override does.
+     */
+    val holdTimeMs: Int,
+    /**
+     * SPEC.md 4.1 and 7.5: how long after an activation this package wants
+     * further presses ignored, in milliseconds. 0 is off, as above.
+     *
+     * Separate from [holdTimeMs] because the two answer different faults — the
+     * hold rejects a press that was never meant, this rejects the second copy
+     * of a press that was.
+     */
+    val releaseTimeMs: Int,
     val specVersion: SpecVersion,
     val rootBoardId: String,
     val boards: List<Board>,
 )
+
+/**
+ * SPEC.md 7.5's rule for a press timing, applied once at the edge.
+ *
+ * A whole number of milliseconds from 0 to [MAX_PRESS_TIMING_MS], where 0 is
+ * off; absent, negative and non-integral all mean 0. **The clamp is the format's
+ * and not a taste**: a package is authored on one machine and opened on another,
+ * so the viewer is where a hold time of a minute has to stop being a board
+ * nobody can use. Doing it here rather than at each use is what lets the gesture
+ * layer treat these as ordinary numbers.
+ */
+internal fun pressTiming(value: Long?): Int {
+    val ms = value ?: return 0
+    return ms.coerceIn(0L, MAX_PRESS_TIMING_MS.toLong()).toInt()
+}
+
+/** SPEC.md 7.5's ceiling on a press timing, in milliseconds. */
+const val MAX_PRESS_TIMING_MS: Int = 2000
 
 /**
  * SPEC.md 5.1: one symbol source per package, and the importer records it rather
@@ -91,16 +134,21 @@ data class SpecVersion(
          * made good; this constant only reports it. Moving it without the
          * fixtures moving under it turns a fact into a claim.
          *
-         * 1.2.0's whole addition is `ext_lautstark_append_on_navigate`
-         * (SPEC.md 4.3, 7.3), which Actions reads and NavigateAndAppendTest
-         * holds against the `navigate-and-append` fixture. See
-         * docs/exchange-pin.md, which moved the pin for exactly that rule.
+         * 1.3.0's whole addition is `ext_lautstark_hold_time_ms` and
+         * `ext_lautstark_release_time_ms` (SPEC.md 4.1, 7.5), which
+         * BoardPackageImporter reads and PressTimingTest holds against the
+         * `press-timings` fixture.
+         *
+         * 1.2.0 before it added `ext_lautstark_append_on_navigate` (SPEC.md
+         * 4.3, 7.3), which Actions reads and NavigateAndAppendTest holds
+         * against `navigate-and-append`. See docs/exchange-pin.md, which has
+         * moved the pin for each of these rules in turn.
          *
          * Only the *major* half of this is enforced anywhere — SPEC.md 12 makes
          * a higher minor something an importer MUST accept, so lagging behind
          * one was never a rejection, only a smaller claim than the truth.
          */
-        val IMPLEMENTED = SpecVersion(1, 2, 0)
+        val IMPLEMENTED = SpecVersion(1, 3, 0)
 
         fun parse(value: String): SpecVersion? {
             val parts = value.split('.')

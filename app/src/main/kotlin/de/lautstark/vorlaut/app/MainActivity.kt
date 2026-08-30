@@ -70,6 +70,20 @@ class MainActivity : ComponentActivity() {
             val boardState by boardModel.state.collectAsState()
 
             val handover = remember { Handover(applicationContext) }
+            /* The two press timings, and the caregiver's answer to them.
+             *
+             * Kept here rather than in BoardViewModel because the override is a
+             * fact about the tablet and outlives every package opened on it,
+             * while the model is about the one Sammlung on screen. The two are
+             * combined at the point of use, which is also the only place that
+             * needs to know a package can be overridden at all. */
+            val pressSettings = remember { PressSettings(applicationContext) }
+            var holdOverride by remember { mutableStateOf(pressSettings.holdOverrideMs) }
+            var releaseOverride by remember { mutableStateOf(pressSettings.releaseOverrideMs) }
+            val timings =
+                remember(holdOverride, releaseOverride, boardState.boardPackage) {
+                    pressSettings.resolve(boardState.boardPackage)
+                }
             var pinIsSet by remember { mutableStateOf(handover.isPinSet) }
             var prompt by remember { mutableStateOf<PinPurpose?>(null) }
             var pinBusy by remember { mutableStateOf(false) }
@@ -169,6 +183,7 @@ class MainActivity : ComponentActivity() {
                                 onUndo = boardModel::undo,
                                 onClear = boardModel::clearBar,
                                 onLeave = ::leaveBoard,
+                                timings = timings,
                             )
                         }
 
@@ -266,6 +281,24 @@ class MainActivity : ComponentActivity() {
                                     runCatching {
                                         startActivity(Intent(android.provider.Settings.ACTION_SECURITY_SETTINGS))
                                     }
+                                },
+                                // What the open Sammlung asks for, so the screen
+                                // can say what "follow the Sammlung" means today
+                                // rather than offering the words alone.
+                                packageTimings =
+                                    PressTimings(
+                                        holdMs = boardState.boardPackage?.holdTimeMs ?: 0,
+                                        releaseMs = boardState.boardPackage?.releaseTimeMs ?: 0,
+                                    ),
+                                holdOverrideMs = holdOverride,
+                                releaseOverrideMs = releaseOverride,
+                                onHoldOverride = {
+                                    pressSettings.holdOverrideMs = it
+                                    holdOverride = it
+                                },
+                                onReleaseOverride = {
+                                    pressSettings.releaseOverrideMs = it
+                                    releaseOverride = it
                                 },
                                 onBack = { route = Route.Sammlungen },
                             )

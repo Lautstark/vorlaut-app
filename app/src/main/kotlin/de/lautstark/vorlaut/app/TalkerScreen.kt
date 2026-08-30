@@ -105,6 +105,7 @@ fun TalkerScreen(
     onClear: () -> Unit,
     onLeave: () -> Unit,
     modifier: Modifier = Modifier,
+    timings: PressTimings = PressTimings.Off,
 ) {
     val board = state.board ?: return
     val gap = Vorlaut.metrics.gap
@@ -132,7 +133,13 @@ fun TalkerScreen(
                 onLeave = onLeave,
             )
             Box(Modifier.fillMaxSize().weight(1f - VorlautBoard.BAR_FRACTION)) {
-                BoardScreen(board = board, state = state, media = media, onPress = onPress)
+                BoardScreen(
+                    board = board,
+                    state = state,
+                    media = media,
+                    onPress = onPress,
+                    timings = timings,
+                )
             }
         }
     }

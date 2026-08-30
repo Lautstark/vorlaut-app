@@ -60,6 +60,14 @@
     <string name="w_path_conflict">The collection disagrees with itself about where a file lives.</string>
     <string name="w_image_reference_ignored">A picture also pointed somewhere online. The one in the collection was used.</string>
     <string name="w_color_unparseable">A colour could not be read, so the standard one was used.</string>
+    <string name="press_hold_title">How long must a button be held?</string>
+    <string name="press_hold_body">A touch only counts once the finger has rested that long. Helps when other buttons are brushed on the way to the right one, or when a hand rests on the board. It also makes every word take longer.</string>
+    <string name="press_release_title">How long is the pause afterwards?</string>
+    <string name="press_release_body">After one press the board stops listening for this long. Helps when one press triggers several times — with a tremor, or a finger that bounces on release.</string>
+    <string name="press_follow_package_is">From the collection (%1$s)</string>
+    <string name="press_off">Off</string>
+    <string name="press_ms">%1$d ms</string>
+    <string name="press_note">Applies on this tablet, to every collection. What is set here is used instead of what the collection brings with it — and stays set when the collection is sent again.</string>
     <string name="pin_setting_title">A PIN for the way out of the board</string>
     <string name="pin_setting_on">A PIN is set. Leaving the board asks for it.</string>
     <string name="pin_setting_off">No PIN set. The board can be left by holding the handle.</string>
