@@ -36,7 +36,7 @@
 //
 //   gradle.properties: exchange.sha
 //     The conformance fixtures, pinned to a commit in
-//     Lautstark/vorlaut-diy-talker and fetched at build time. A bare SHA in a
+//     Lautstark/vorlaut-editor and fetched at build time. A bare SHA in a
 //     properties file - no manager reads it, and no custom manager is
 //     configured for it deliberately. docs/exchange-pin.md explains why:
 //     moving it is a decision about which revision of the spec this viewer
