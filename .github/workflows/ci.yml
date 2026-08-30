@@ -267,13 +267,21 @@ jobs:
           key-alias: ${{ secrets.RELEASE_KEY_ALIAS }}
           key-password: ${{ secrets.RELEASE_KEY_PASSWORD }}
 
-      - name: Name the artifact after its version
+      # Twice, from the same bytes. The versioned name is what somebody keeps on
+      # disk and can tell apart six months later; the bare one exists so that
+      # https://github.com/Lautstark/vorlaut-app/releases/latest/download/vorlaut.apk
+      # keeps resolving after every release. The organisation site links that
+      # address, and a name carrying a version number cannot be linked to at all
+      # without editing another repository on every release.
+      - name: Name the artifact after its version, and once without
         id: artifact
         run: |
           set -euo pipefail
           apk="vorlaut-${{ steps.version.outputs.name }}.apk"
           cp "${{ steps.apk.outputs.apk }}" "$apk"
           sha256sum "$apk" > "$apk.sha256"
+          cp "$apk" vorlaut.apk
+          sha256sum vorlaut.apk > vorlaut.apk.sha256
           echo "apk=$apk" >> "$GITHUB_OUTPUT"
 
       # An APK downloaded from a release page is sideloaded, so the checksum goes up
@@ -291,6 +299,8 @@ jobs:
           gh release create "${{ steps.version.outputs.tag }}" \
             "${{ steps.artifact.outputs.apk }}" \
             "${{ steps.artifact.outputs.apk }}.sha256" \
+            vorlaut.apk \
+            vorlaut.apk.sha256 \
             --target "$GITHUB_SHA" \
             --title "vorlaut ${{ steps.version.outputs.name }}" \
             --generate-notes

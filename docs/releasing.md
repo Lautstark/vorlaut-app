@@ -211,3 +211,15 @@ built.
 ```bash
 shasum -a 256 -c vorlaut-0.2.0.apk.sha256
 ```
+
+Every release carries the same APK twice: `vorlaut-0.2.0.apk`, which says which
+version it is, and `vorlaut.apk`, which does not and therefore keeps one address
+valid across releases:
+
+```
+https://github.com/Lautstark/vorlaut-app/releases/latest/download/vorlaut.apk
+```
+
+That is the address the organisation site links, so that a page there does not
+have to be edited every time a version goes out. Both files have their own
+`.sha256` beside them and are byte-identical.
