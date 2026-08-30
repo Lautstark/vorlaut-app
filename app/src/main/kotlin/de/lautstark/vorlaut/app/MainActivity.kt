@@ -78,10 +78,9 @@ class MainActivity : ComponentActivity() {
              * combined at the point of use, which is also the only place that
              * needs to know a package can be overridden at all. */
             val pressSettings = remember { PressSettings(applicationContext) }
-            var holdOverride by remember { mutableStateOf(pressSettings.holdOverrideMs) }
-            var releaseOverride by remember { mutableStateOf(pressSettings.releaseOverrideMs) }
+            var pressMode by remember { mutableStateOf(pressSettings.mode) }
             val timings =
-                remember(holdOverride, releaseOverride, boardState.boardPackage) {
+                remember(pressMode, boardState.boardPackage) {
                     pressSettings.resolve(boardState.boardPackage)
                 }
             var pinIsSet by remember { mutableStateOf(handover.isPinSet) }
@@ -290,15 +289,10 @@ class MainActivity : ComponentActivity() {
                                         holdMs = boardState.boardPackage?.holdTimeMs ?: 0,
                                         releaseMs = boardState.boardPackage?.releaseTimeMs ?: 0,
                                     ),
-                                holdOverrideMs = holdOverride,
-                                releaseOverrideMs = releaseOverride,
-                                onHoldOverride = {
-                                    pressSettings.holdOverrideMs = it
-                                    holdOverride = it
-                                },
-                                onReleaseOverride = {
-                                    pressSettings.releaseOverrideMs = it
-                                    releaseOverride = it
+                                mode = pressMode,
+                                onMode = {
+                                    pressSettings.mode = it
+                                    pressMode = it
                                 },
                                 onBack = { route = Route.Sammlungen },
                             )

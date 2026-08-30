@@ -48,9 +48,11 @@ import de.lautstark.vorlaut.app.design.Vorlaut
  * carries the author's default, and a viewer with its own setting SHOULD let it
  * win.
  *
- * So each timing has three states rather than two, and the third is the default:
- * take whatever the Sammlung asked for. [PressSettings] is where the reason an
- * override is stored apart from the package is written down.
+ * So there are four answers and the default is the first: take whatever the
+ * Sammlung asked for, or one of [PressMode]'s three. [PressSettings] is where
+ * the reason an override is stored apart from the package is written down, and
+ * [PressMode] is where the reason this screen names modes while the editor
+ * offers milliseconds is.
  */
 @Composable
 fun SettingsScreen(
@@ -60,10 +62,8 @@ fun SettingsScreen(
     onRemovePin: () -> Unit,
     onFixPinning: () -> Unit,
     packageTimings: PressTimings,
-    holdOverrideMs: Int?,
-    releaseOverrideMs: Int?,
-    onHoldOverride: (Int?) -> Unit,
-    onReleaseOverride: (Int?) -> Unit,
+    mode: PressMode?,
+    onMode: (PressMode?) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -110,38 +110,24 @@ fun SettingsScreen(
 
                 Box(Modifier.size(12.dp))
 
-                /* The two timings, first, because they are the two somebody
-                 * opens this screen for on a bad afternoon — the PIN is set once
-                 * and never looked at again.
+                /* First, because it is what somebody opens this screen for on a
+                 * bad afternoon — the PIN is set once and never looked at again.
                  *
-                 * Steps rather than a slider or a number field, and the same
-                 * steps the editor offers: nobody tuning this knows the answer
-                 * in advance, it is found by trying one and watching, and a
-                 * slider invites the belief that 340 differs from 300, which it
-                 * does not for any hand this is for. */
+                 * One question rather than the two millisecond pickers this
+                 * replaces. Those were honest and unusable: a parent knows their
+                 * child pressed once and got three words, not that they want a
+                 * 600 ms post-activation cooldown. The numbers still exist and
+                 * the editor still offers all of them, because somebody
+                 * authoring a board sets a considered default once; this is the
+                 * screen for adjusting from what you just watched happen. */
                 Setting(
-                    title = stringResource(R.string.press_hold_title),
-                    body = stringResource(R.string.press_hold_body),
+                    title = stringResource(R.string.press_title),
+                    body = stringResource(R.string.press_body),
                 ) {
-                    PressSteps(
-                        steps = HOLD_STEPS,
-                        chosen = holdOverrideMs,
-                        fromPackage = packageTimings.holdMs,
-                        onChoose = onHoldOverride,
-                    )
-                }
-
-                Box(Modifier.size(12.dp))
-
-                Setting(
-                    title = stringResource(R.string.press_release_title),
-                    body = stringResource(R.string.press_release_body),
-                ) {
-                    PressSteps(
-                        steps = RELEASE_STEPS,
-                        chosen = releaseOverrideMs,
-                        fromPackage = packageTimings.releaseMs,
-                        onChoose = onReleaseOverride,
+                    PressModes(
+                        chosen = mode,
+                        fromPackage = packageTimings,
+                        onChoose = onMode,
                     )
                 }
 
@@ -169,65 +155,80 @@ fun SettingsScreen(
     }
 }
 
-/** The steps each timing is offered in. The editor's lists, deliberately — a
- *  caregiver tuning the same child from both ends should not find two different
- *  sets of numbers. See accessPanel in `vorlaut-editor`. */
-private val HOLD_STEPS = listOf(0, 100, 300, 500, 800)
-private val RELEASE_STEPS = listOf(0, 300, 500, 1000, 1500)
-
 /**
- * One timing, as "Aus der Sammlung" plus the steps.
+ * The four answers: follow the Sammlung, or one of [PressMode]'s three.
  *
- * The first chip is the third state and the default, and it names the number it
- * currently resolves to. Saying only "Aus der Sammlung" would leave the one
- * question a caregiver actually has — *what is it doing right now* — answerable
- * only by exporting the Sammlung again and reading the manifest.
+ * Each carries a line saying what it does, because the names alone are honest
+ * but thin — "Einmal pro Druck" is checkable against what somebody just watched
+ * happen only once they know a press is what is being counted. Stacked rather
+ * than laid out as chips in a row for the same reason: with a sentence under
+ * each, four of them side by side would wrap into a wall.
+ *
+ * The first names what the Sammlung currently asks for. Saying only "Aus der
+ * Sammlung" would leave the question a caregiver actually has — *what is it
+ * doing right now* — answerable only by exporting the Sammlung and reading its
+ * manifest.
  */
 @Composable
-private fun PressSteps(
-    steps: List<Int>,
-    chosen: Int?,
-    fromPackage: Int,
-    onChoose: (Int?) -> Unit,
+private fun PressModes(
+    chosen: PressMode?,
+    fromPackage: PressTimings,
+    onChoose: (PressMode?) -> Unit,
 ) {
     val c = Vorlaut.colors
-    val spoken: @Composable (Int) -> String = { ms ->
-        if (ms == 0) stringResource(R.string.press_off) else stringResource(R.string.press_ms, ms)
-    }
-    FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(9.dp),
-        verticalArrangement = Arrangement.spacedBy(9.dp),
-    ) {
-        Step(
-            label = stringResource(R.string.press_follow_package_is, spoken(fromPackage)),
+    Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+        Choice(
+            label = stringResource(R.string.press_follow_package),
+            note = stringResource(R.string.press_follow_package_is, describe(fromPackage)),
             selected = chosen == null,
             onClick = { onChoose(null) },
         )
-        for (ms in steps) {
-            Step(
-                label = spoken(ms),
-                selected = chosen == ms,
-                onClick = { onChoose(ms) },
+        for (mode in PressMode.entries) {
+            Choice(
+                label = stringResource(nameOf(mode)),
+                note = stringResource(noteOf(mode)),
+                selected = chosen == mode,
+                onClick = { onChoose(mode) },
             )
         }
     }
-    // Said once under both, rather than twice.
     Box(Modifier.size(6.dp))
     Txt(stringResource(R.string.press_note), style = Vorlaut.type.sub, color = c.textDim)
 }
 
-/** One chip. The bordered box that lights up when chosen, which is the shape
- *  the editor's own step picker takes and the one this family draws a choice
- *  in. */
+/* Written out one mode at a time rather than built from the enum's name,
+ * so that every string id in this app is greppable from the source. */
+private fun nameOf(mode: PressMode) =
+    when (mode) {
+        PressMode.AtOnce -> R.string.press_mode_at_once
+        PressMode.Once -> R.string.press_mode_once
+        PressMode.Held -> R.string.press_mode_held
+    }
+
+private fun noteOf(mode: PressMode) =
+    when (mode) {
+        PressMode.AtOnce -> R.string.press_mode_at_once_note
+        PressMode.Once -> R.string.press_mode_once_note
+        PressMode.Held -> R.string.press_mode_held_note
+    }
+
+/** What a Sammlung is asking for, in the words of the mode nearest to it. */
 @Composable
-private fun Step(
+private fun describe(timings: PressTimings): String = stringResource(nameOf(PressMode.nearest(timings)))
+
+/** One choice: a name, a line about it, and the box that lights up when it is
+ *  the one in force. The shape the word-colour options take in the editor. */
+@Composable
+private fun Choice(
     label: String,
+    note: String,
     selected: Boolean,
     onClick: () -> Unit,
 ) {
     val c = Vorlaut.colors
-    Box(
+    Column(
         Modifier
+            .fillMaxWidth()
             .clip(RoundedCornerShape(Vorlaut.metrics.radiusSm))
             .background(if (selected) c.accentSoft else c.surface)
             .border(
@@ -235,9 +236,11 @@ private fun Step(
                 if (selected) c.accent else c.line,
                 RoundedCornerShape(Vorlaut.metrics.radiusSm),
             ).selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 10.dp),
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
-        Txt(label, style = Vorlaut.type.sub, color = if (selected) c.text else c.textDim)
+        Txt(label, style = Vorlaut.type.rowName, color = if (selected) c.text else c.textDim)
+        Txt(note, style = Vorlaut.type.sub, color = c.textDim)
     }
 }
 
