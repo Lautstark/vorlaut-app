@@ -212,6 +212,12 @@ object BoardPackageImporter {
                     // importer must never fail over — so a value that is not a
                     // boolean is treated as absent rather than rejected.
                     firstColumnGap = manifest.bool("ext_lautstark_first_column_gap") ?: false,
+                    // SPEC.md 4.1 and 7.5: optional, 0 by default, clamped at
+                    // the ceiling, and — like the gap above — never a reason to
+                    // fail an import. Sanitised once here so that nothing
+                    // downstream has to know the rule; see pressTiming.
+                    holdTimeMs = pressTiming(manifest.long("ext_lautstark_hold_time_ms")),
+                    releaseTimeMs = pressTiming(manifest.long("ext_lautstark_release_time_ms")),
                     specVersion = specVersion,
                     rootBoardId = rootBoardId,
                     boards = boards,

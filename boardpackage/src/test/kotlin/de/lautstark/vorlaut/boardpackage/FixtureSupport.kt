@@ -1,12 +1,18 @@
 package de.lautstark.vorlaut.boardpackage
 
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import org.junit.Assert.assertEquals
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.util.zip.ZipEntry
+import java.util.zip.ZipInputStream
+import java.util.zip.ZipOutputStream
 
 /**
  * Reads the conformance fixtures the Gradle build materialised.
@@ -113,6 +119,51 @@ private fun destinationOf(
         is OnActivate.Navigate -> action.boardId
         OnActivate.Home -> boardPackage.rootBoardId
     }
+
+/**
+ * A fixture package with its manifest edited, for the cases no fixture carries.
+ *
+ * The fixtures state what a *conformant builder* writes, and the spec's README is
+ * firm that they are the normative artefact. But some rules are about what an
+ * importer does with a manifest no builder would produce — SPEC.md 7.5's clamp
+ * and its "treat nonsense as off" are both of that kind, and asking the upstream
+ * generator for a fixture that deliberately writes an invalid field would put a
+ * bad example in the place everybody copies from.
+ *
+ * So those cases are built here, from a real package, and are deliberately *not*
+ * conformance: nothing built this way is asserted against an `.expected.json`.
+ *
+ * The manifest is parsed and rebuilt rather than spliced as text, because
+ * splicing in a key the package already carries leaves two of them in one object
+ * and the answer then depends on which one the parser keeps — a property of
+ * kotlinx.serialization, and not one a test about press timings should be pinning
+ * by accident.
+ */
+internal fun withManifest(
+    bytes: ByteArray,
+    overrides: Map<String, JsonElement>,
+): ByteArray {
+    val out = ByteArrayOutputStream()
+    ZipInputStream(ByteArrayInputStream(bytes)).use { source ->
+        ZipOutputStream(out).use { sink ->
+            while (true) {
+                val entry = source.nextEntry ?: break
+                val content = source.readBytes()
+                sink.putNextEntry(ZipEntry(entry.name))
+                sink.write(
+                    if (entry.name != "manifest.json") {
+                        content
+                    } else {
+                        val manifest = Json.parseToJsonElement(content.toString(Charsets.UTF_8)) as JsonObject
+                        JsonObject(manifest + overrides).toString().toByteArray(Charsets.UTF_8)
+                    },
+                )
+                sink.closeEntry()
+            }
+        }
+    }
+    return out.toByteArray()
+}
 
 data class FixtureEntry(
     val name: String,

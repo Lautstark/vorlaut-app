@@ -1,9 +1,12 @@
 package de.lautstark.vorlaut.app
 
+import android.os.SystemClock
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -19,6 +22,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -33,9 +37,13 @@ import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -52,6 +60,7 @@ import de.lautstark.vorlaut.boardpackage.Board
 import de.lautstark.vorlaut.boardpackage.Button
 import de.lautstark.vorlaut.boardpackage.ButtonState
 import de.lautstark.vorlaut.boardpackage.OnActivate
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * A board, drawn.
@@ -99,7 +108,12 @@ fun BoardScreen(
     media: BoardMedia,
     onPress: (Button) -> Unit,
     modifier: Modifier = Modifier,
+    timings: PressTimings = PressTimings.Off,
 ) {
+    // One per board on screen, and deliberately not carried across boards: a
+    // navigation ends whatever was being held, and a cooldown started by the
+    // press that turned the page has nothing to say about the page it turned to.
+    val presses = remember(board.id) { BoardPresses() }
     val gap = Vorlaut.metrics.gap
     // Only where there is a second column for the space to be between.
     val apart = state.firstColumnGap && board.columns > 1
@@ -166,7 +180,9 @@ fun BoardScreen(
                                     },
                                 ),
                         ) {
-                            held?.let { ButtonCell(it, state, media, cell, targetPx, onPress) }
+                            held?.let {
+                                ButtonCell(it, state, media, cell, targetPx, onPress, timings, presses)
+                            }
                         }
                     }
                 }
@@ -183,10 +199,13 @@ private fun ButtonCell(
     cell: Dp,
     targetPx: Int,
     onPress: (Button) -> Unit,
+    timings: PressTimings,
+    presses: BoardPresses,
 ) {
     val c = Vorlaut.colors
     val disabled = button.onActivate == OnActivate.Disabled
     val degraded = button.state == ButtonState.DEGRADED
+    val held = presses.holding == button.id
 
     /* A word button with no recording to say it with.
      *
@@ -331,11 +350,46 @@ private fun ButtonCell(
                 // user asks first and cannot ask out loud.
                 if (speaking) Modifier.border(4.dp, c.accent, tile) else Modifier,
             )
+            /* Under the finger, right now.
+             *
+             * SPEC.md 7.5 requires this while a hold counts, and it is drawn for
+             * every press rather than only for held ones — before this there was
+             * no press feedback at all on a board. The only thing that answered
+             * "did it hear me" was the speaking border above, which needs a
+             * recording to play, so a button with no clip took a press and
+             * showed nothing whatsoever. That is its own reason to press again,
+             * which is one of the two faults the release time is here to absorb.
+             *
+             * Ink rather than the accent, because the accent already means
+             * something one line up and the two would be told apart only by
+             * width. This is a shadow under a finger; that is a word being
+             * spoken.
+             */
+            .then(if (held) Modifier.border(3.dp, VorlautBoard.ink, tile) else Modifier)
             // A disabled button still takes the press and visibly refuses it,
             // rather than behaving like a gap in the board.
-            .clickable { onPress(button) }
-            .semantics { contentDescription = describe(button, degraded, voiceless, disabled) }
-            .padding(8.dp),
+            .pressGesture(button, timings, presses, onPress)
+            .semantics {
+                contentDescription = describe(button, degraded, voiceless, disabled)
+                /* The screen reader's own way in, and it deliberately skips the
+                 * timings above.
+                 *
+                 * TalkBack activates with an explicit double tap on a focused
+                 * element, which is already a deliberate, confirmed act — the
+                 * thing a hold time exists to establish. Putting the hold in
+                 * front of it would ask somebody to hold a gesture that is not
+                 * a hold, and the single-pointer rule is meaningless for an
+                 * activation that arrives one at a time by construction.
+                 *
+                 * Losing this was the real cost of dropping `clickable`, and it
+                 * would have been a silent one: the board looks identical and
+                 * simply stops answering a screen reader. */
+                role = Role.Button
+                onClick(label = null) {
+                    onPress(button)
+                    true
+                }
+            }.padding(8.dp),
     ) {
         Column(
             Modifier.fillMaxSize().alpha(if (disabled) 0.45f else 1f),
@@ -479,6 +533,96 @@ internal val HOME_TONES =
             0f,
         ),
     )
+
+/**
+ * SPEC.md 7.5, on one cell: when a press on this button counts.
+ *
+ * Four things happen here, and only the first is what most of the code is about.
+ *
+ * **The board is taken by one pointer at a time.** [BoardPresses] says why; the
+ * consequence here is that a second finger landing on a second cell finds the
+ * board already claimed and is dropped without ever being drawn as a press.
+ *
+ * **A press that arrives during the cooldown is dropped, not queued** — SPEC.md
+ * 7.5 is explicit, and the reason is that a queued press lands after the user has
+ * given up on it and reads as the board acting by itself. It is swallowed
+ * silently: showing a pressed state for a press that will not count would say
+ * the opposite of what is happening.
+ *
+ * **With a hold time, activation happens at the end of the hold and not on
+ * release.** This is what every talker with this setting does, and it is the
+ * kinder half: the word arrives while the finger is still down, so the child
+ * learns the length rather than discovering it on lift. With no hold time the
+ * button activates on release exactly as it always has — that path has to stay
+ * byte-for-byte the old behaviour, because it is the one every existing board is
+ * used with.
+ *
+ * **A hold shows itself the whole time it is counting**, which SPEC.md 7.5 makes
+ * a MUST rather than a suggestion. A hold with no feedback is indistinguishable
+ * from a dead button for as long as it lasts, and 7.4 already says what a button
+ * that takes a press and does nothing teaches the person pressing it.
+ */
+private fun Modifier.pressGesture(
+    button: Button,
+    timings: PressTimings,
+    presses: BoardPresses,
+    onPress: (Button) -> Unit,
+): Modifier =
+    pointerInput(button.id, timings) {
+        awaitEachGesture {
+            val down = awaitFirstDown(requireUnconsumed = false)
+            if (presses.deaf(SystemClock.uptimeMillis()) || !presses.claim(down.id)) {
+                // Let the finger finish its journey so the next one starts
+                // clean, and say nothing while it does.
+                waitForUpOrCancellation()
+                return@awaitEachGesture
+            }
+            try {
+                presses.show(button.id)
+                if (timings.holdMs <= 0) {
+                    // waitForUpOrCancellation() answers null when the pointer is
+                    // consumed elsewhere or leaves the cell, which is the same
+                    // "slid off, do nothing" clickable has always had.
+                    if (waitForUpOrCancellation() != null) {
+                        onPress(button)
+                        presses.activated(SystemClock.uptimeMillis(), timings.releaseMs)
+                    }
+                    return@awaitEachGesture
+                }
+
+                /* Whether the gesture ended before the hold was up.
+                 *
+                 * The two outcomes of withTimeoutOrNull have to be told apart
+                 * and both of them are null on their own: the block returns null
+                 * when the press was cancelled, and the wrapper returns null when
+                 * it timed out. Returning `true` from inside the block is what
+                 * separates them - reaching that line at all means the gesture
+                 * finished first, whichever way it finished. */
+                val endedEarly =
+                    withTimeoutOrNull(timings.holdMs.toLong()) {
+                        waitForUpOrCancellation()
+                        true
+                    } ?: false
+
+                if (!endedEarly) {
+                    // The finger neither lifted nor left for the whole window,
+                    // which is the definition of a press that counts.
+                    onPress(button)
+                    presses.activated(SystemClock.uptimeMillis(), timings.releaseMs)
+                    // The mark comes off at the moment the word happens rather
+                    // than on lift: what it was reporting was the wait, and the
+                    // wait is over.
+                    presses.clear()
+                    waitForUpOrCancellation()
+                }
+            } finally {
+                // Whatever happened - activated, cancelled, or the coroutine
+                // torn down by a navigation mid-hold - the board goes back to
+                // nobody's. Leaving it claimed would deafen the whole page.
+                presses.release(down.id)
+            }
+        }
+    }
 
 /** A cross over the whole face: this button is not going to do anything. */
 @Composable

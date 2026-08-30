@@ -47,6 +47,23 @@ internal fun JsonObject.int(key: String): Int? {
     return primitive.content.toIntOrNull()
 }
 
+/**
+ * Like [int], in Long so that a number too large for an Int is still a number.
+ *
+ * That distinction is the whole reason this exists. SPEC.md 7.5 says a press
+ * timing above the ceiling is *clamped*, and one that is not an integer is
+ * *off* — two different outcomes. Read through [int], `3000000000` would fail
+ * `toIntOrNull` and come back null, so a package asking for an absurdly long
+ * hold would switch the hold off instead of pinning it at the maximum. Off is
+ * the safer of the two to land on by accident, which is exactly why it should
+ * not be arrived at by accident.
+ */
+internal fun JsonObject.long(key: String): Long? {
+    val primitive = this[key] as? JsonPrimitive ?: return null
+    if (primitive.isString) return null
+    return primitive.content.toLongOrNull()
+}
+
 internal fun JsonObject.obj(key: String): JsonObject? = this[key] as? JsonObject
 
 internal fun JsonObject.arr(key: String): JsonArray? = this[key] as? JsonArray
