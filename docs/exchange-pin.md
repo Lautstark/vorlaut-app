@@ -1,7 +1,7 @@
 # Pinning the exchange spec
 
 The board package format — `SPEC.md` and the conformance fixtures — lives in
-`Lautstark/vorlaut-diy-talker` under `exchange/`, not here. This file records how
+`Lautstark/vorlaut-editor` under `exchange/`, not here. This file records how
 this repository consumes it and why it is done this way.
 
 ## The rule
@@ -20,13 +20,34 @@ deliberate change with a test run attached, never a routine bump.
 ## Current state
 
 ```properties
-exchange.sha=4055c1fc387865015f7da1334fb5d1c6509307a1
+exchange.sha=793739d33ad6d3dcc7f23c5c6dedb68840d749fc
 ```
 
 That commit carries `SPEC.md` 1.2.0 and fifteen fixtures, all of which pass.
 
-Moved from `9412459` (1.1.0, fourteen) for a rule rather than a fixture, which
-is the first time this pin has moved for one. 1.2.0 adds
+**Moved from `4055c1f` for an address rather than a version — the first time
+this pin has moved without the fixtures changing at all.** The spec left
+`Lautstark/vorlaut-diy-talker` on 2026-08-27 under
+[ADR 0012](https://github.com/Lautstark/vorlaut-diy-talker/blob/main/adr/0012-the-repository-splits-editor-leaves.md),
+when the editor became its own repository and took `exchange/` with it, so that
+the format and the program that writes it — the editor's
+`src/data/app_package.ts` — sit in one repository instead of two. `793739d` is
+that move, so the pin now names the commit that established the fixtures' home.
+
+All thirty-two fixture files are byte-identical between `4055c1f` and this
+commit; the fetched set does not change and no fixture had to be re-run against
+a different expectation. The build never went red while the address was wrong,
+and that is exactly the problem: a raw URL at a full SHA is immutable, so the
+old address kept serving the old fixtures perfectly well after it stopped being
+the right address. **What it could never do again is
+carry a newer spec.** No further commit was ever going to land in that tree, so
+the next real pin move — the first one that wanted a field the old tree had
+never heard of — would have found nothing to move to. Repointing before that
+happens is why this is its own change with nothing else in it.
+
+Before that, `4055c1f` (1.2.0, fifteen), moved from `9412459` (1.1.0, fourteen)
+for a rule rather than a fixture, which was the first time this pin had moved
+for one. 1.2.0 adds
 `ext_lautstark_append_on_navigate`: a navigating button may append its entry to
 the message bar before it navigates, on `load_board` and on `:home` alike. The
 fixture is `navigate-and-append`, and the two new `on_activate` values it states
@@ -110,8 +131,10 @@ instead. This is for local work only — it is never set in CI, and it does not
 count as a pin.
 
 ```bash
-./gradlew :boardpackage:test -Pexchange.localPath=$HOME/Code/vorlaut/exchange
+./gradlew :boardpackage:test -Pexchange.localPath=$HOME/Code/vorlaut-editor/exchange
 ```
 
-Note the local directory is `~/Code/vorlaut` even though the repository is now
-`Lautstark/vorlaut-diy-talker`; only the repository was renamed.
+This is the path to use while adding a field to the spec: the editor's working
+tree holds `exchange/SPEC.md`, its fixtures and the writer that has to agree
+with them, so a new field can be drafted on all three at once and only pinned
+here once it has landed on the editor's default branch.

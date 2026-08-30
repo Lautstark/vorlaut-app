@@ -150,12 +150,16 @@ export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
 ## The exchange fixtures are fetched, never copied
 
 `:boardpackage` is checked against the conformance fixtures in
-`Lautstark/vorlaut-diy-talker`, pinned by commit SHA in `gradle.properties` and
+`Lautstark/vorlaut-editor`, pinned by commit SHA in `gradle.properties` and
 fetched at build time. **Do not copy them in.** A copy stops tracking the spec
 the moment either side changes and then passes forever, which is worse than
 having no fixtures because it looks like coverage. See
 [`docs/exchange-pin.md`](docs/exchange-pin.md), which also covers what to do
 when the pin is unset and why the build fails loudly rather than skipping.
+
+The editor is the right repository because `SPEC.md` went there with the program
+that writes packages, on 2026-08-27. It was in `Lautstark/vorlaut-diy-talker`
+before that, and older commits here say so.
 
 `boardpackage/src/test/resources/builder/` is the one exception and is not a
 fixture: those are real builder output, kept so the two programs can be shown to

@@ -85,7 +85,9 @@ rather than in a commit message.
 ## Cutting a new one
 
 Whenever the export changes shape. From a checkout of
-`Lautstark/vorlaut-diy-talker`:
+`Lautstark/vorlaut-editor` — the exporter and both specs below went there with
+the editor on 2026-08-27, so neither command runs in `vorlaut-diy-talker` any
+more:
 
 ```bash
 DUMP_TO=/tmp/vorlaut-diy.obz E2E_PORT=8842 \

@@ -34,7 +34,7 @@ tasks.test {
 // -----------------------------------------------------------------------------
 // The conformance fixtures.
 //
-// They live in Lautstark/vorlaut-diy-talker under exchange/fixtures and are
+// They live in Lautstark/vorlaut-editor under exchange/fixtures and are
 // fetched at a pinned commit, never copied into this repository. The spec's own
 // README is blunt about why: a copy stops tracking the spec the moment either
 // side changes, and a stale fixture passes forever. That is worse than having no
@@ -43,10 +43,19 @@ tasks.test {
 // Files are fetched one by one from raw.githubusercontent.com at the pinned SHA
 // rather than as a tarball of the whole repository. A raw URL carrying a full
 // commit SHA is immutable, which is the property a pin needs, and it avoids
-// pulling a firmware-and-hardware repository down to read twelve small files.
+// pulling a whole editor down to read twelve small files.
+//
+// The repository is the editor's because that is where the spec went on
+// 2026-08-27, under ADR 0012: the editor left vorlaut-diy-talker and took
+// exchange/ with it, so that the format and the writer of it — the editor's
+// src/data/app_package.ts — sit in one repository rather than two. The old
+// address kept working long after it stopped being the right one, because a raw
+// URL at a full SHA is immutable and the fixtures are still in that tree; what
+// it could never do again is carry a *newer* spec, since no further commit was
+// ever going to land there. See docs/exchange-pin.md.
 // -----------------------------------------------------------------------------
 
-val exchangeRepository = "Lautstark/vorlaut-diy-talker"
+val exchangeRepository = "Lautstark/vorlaut-editor"
 val exchangeSha = providers.gradleProperty("exchange.sha").orElse("").map { it.trim() }
 val exchangeLocalPath = providers.gradleProperty("exchange.localPath").map { it.trim() }
 val fixturesOutput = layout.buildDirectory.dir("exchange/fixtures")
@@ -96,7 +105,7 @@ val provideExchangeFixtures =
                         appendLine("    exchange.sha=<40-character commit SHA>")
                         appendLine()
                         appendLine("Or point at a local checkout while developing against an unreleased spec:")
-                        appendLine("    ./gradlew :boardpackage:test -Pexchange.localPath=\$HOME/Code/vorlaut-diy-talker/exchange")
+                        appendLine("    ./gradlew :boardpackage:test -Pexchange.localPath=\$HOME/Code/vorlaut-editor/exchange")
                         appendLine()
                         append("See docs/exchange-pin.md.")
                     },
