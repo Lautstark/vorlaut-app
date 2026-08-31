@@ -59,7 +59,7 @@ that.
 ## The exchange format
 
 The format is specified outside this repository, in
-[`Lautstark/vorlaut-diy-talker`](https://github.com/Lautstark/vorlaut-diy-talker)
+[`Lautstark/vorlaut-editor`](https://github.com/Lautstark/vorlaut-editor)
 under `exchange/`: `SPEC.md` and the conformance fixtures in `fixtures/`. Those
 fixtures are the acceptance criteria for `:boardpackage` — every one of them must
 produce exactly the outcome its `.expected.json` describes.
@@ -70,12 +70,12 @@ a stale fixture passes forever — which is the one failure this arrangement exi
 to avoid. A spec change has to surface as a failing build, not as silent
 divergence.
 
-The pin is `5ffeb579bccefc71e7b63f2e19008440df0c3179`, recorded as `exchange.sha` in
+The pin is `1f6055b4aa424a6c1b137282b95176d55c8018a2`, recorded as `exchange.sha` in
 [`gradle.properties`](gradle.properties). Moving it is a deliberate change with a
 test run attached, never a routine bump — see
 [`docs/exchange-pin.md`](docs/exchange-pin.md).
 
-All 13 fixtures pass.
+All 17 fixtures pass, at `SPEC.md` 1.4.0.
 
 ### And one package the builder actually wrote
 

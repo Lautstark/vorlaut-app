@@ -134,7 +134,11 @@ data class SpecVersion(
          * made good; this constant only reports it. Moving it without the
          * fixtures moving under it turns a fact into a claim.
          *
-         * 1.3.0's whole addition is `ext_lautstark_hold_time_ms` and
+         * 1.4.0's whole addition is `ext_lautstark_speak_on_navigate` (SPEC.md
+         * 4.3, 7.3), which Actions reads and NavigateAndSpeakTest holds against
+         * the `navigate-and-speak` fixture.
+         *
+         * 1.3.0's addition is `ext_lautstark_hold_time_ms` and
          * `ext_lautstark_release_time_ms` (SPEC.md 4.1, 7.5), which
          * BoardPackageImporter reads and PressTimingTest holds against the
          * `press-timings` fixture.
@@ -148,7 +152,7 @@ data class SpecVersion(
          * a higher minor something an importer MUST accept, so lagging behind
          * one was never a rejection, only a smaller claim than the truth.
          */
-        val IMPLEMENTED = SpecVersion(1, 3, 0)
+        val IMPLEMENTED = SpecVersion(1, 4, 0)
 
         fun parse(value: String): SpecVersion? {
             val parts = value.split('.')
@@ -268,6 +272,48 @@ sealed interface OnActivate {
         val then: Navigation,
     ) : OnActivate {
         override val wireName = "append+${then.wireName}"
+    }
+
+    /**
+     * `ext_lautstark_speak_on_navigate` (SPEC.md 4.3, 7.3, since 1.4.0): speak
+     * the button's own audio exactly as [SpeakImmediately] does, **then**
+     * navigate. One press, both halves, and the order is normative.
+     *
+     * [AppendThenNavigate]'s sibling one board model along. A board with a
+     * message bar wants the entry *appended* on the way through; a board
+     * without one — the five-key talker's four keys, where a key is a whole
+     * sentence and there is nothing to compose — wants it *spoken*, because
+     * there is nothing for it to join. **The bar is not touched at all**: this
+     * is the speaking modifier, and it says nothing about the bar.
+     *
+     * [then] is a [Navigate] and deliberately not a [Navigation]. SPEC.md 7.3
+     * narrows this modifier to `load_board` — unlike the appending one it is
+     * **not** extended to `action: ":home"`, and beside `:home` it MUST be
+     * ignored — and a type that cannot hold `Home` is the narrowing stated
+     * where the compiler can check it rather than in prose next to a wider
+     * field. Fixture `navigate-and-speak` pins it on its `e2`. The spec says a
+     * future minor version may widen it if a board model turns up that wants
+     * both; widening this field is that change.
+     */
+    data class SpeakThenNavigate(
+        val then: Navigate,
+        /**
+         * SPEC.md 7.3's "both modifiers on one button": a `load_board` button
+         * carrying both flags appends its entry *and* speaks it, then
+         * navigates, and an importer MUST NOT warn about it.
+         *
+         * A flag inside the wrapper rather than a third wrapper beside it. The
+         * argument against a flag on [Navigate] and [Home] does not reach here
+         * — every site that matches on navigation is still asked about this
+         * case by the compiler, because the wrapper is still a wrapper. What it
+         * would buy is a third shape for a combination the spec itself calls
+         * one no Lautstark builder writes, and neither editor offers.
+         *
+         * No fixture reaches it; NavigateAndSpeakTest pins it.
+         */
+        val alsoAppends: Boolean = false,
+    ) : OnActivate {
+        override val wireName = if (alsoAppends) "append+speak+${then.wireName}" else "speak+${then.wireName}"
     }
 
     /**

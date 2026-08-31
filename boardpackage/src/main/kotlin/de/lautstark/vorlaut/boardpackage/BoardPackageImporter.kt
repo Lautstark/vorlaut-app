@@ -339,10 +339,16 @@ object BoardPackageImporter {
         // the same clip as the word button it also is. Without this it opens the
         // next board in silence, which is the quiet half of the failure - the
         // board still changes, so nothing looks broken.
+        //
+        // A speak-on-navigate button does too, and for it the clip is not a
+        // nicety but the entire point: it carries the flag *in order to* be
+        // heard on the way through, so resolving no audio would leave it
+        // indistinguishable from the plain navigation beside it.
         val speaks =
             onActivate == OnActivate.Append ||
                 onActivate == OnActivate.SpeakImmediately ||
-                onActivate is OnActivate.AppendThenNavigate
+                onActivate is OnActivate.AppendThenNavigate ||
+                onActivate is OnActivate.SpeakThenNavigate
         val sound =
             if (speaks) {
                 resolveSound(button.str("sound_id"), boardId, buttonId, archive, sounds, soundPaths, warnings)

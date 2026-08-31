@@ -31,6 +31,19 @@ class SpecRulesTest {
         /** The flag with nothing to navigate to. */
         const val CARRYING_PLAIN_WORD =
             """[ { "id": "b1", "label": "Apfel", "vocalization": "einen Apfel", "ext_lautstark_append_on_navigate": true } ]"""
+
+        /** SPEC.md 7.3's speak-on-navigate on the array spelling of `:home`. */
+        const val SPEAKING_HOME_ARRAY =
+            """[ { "id": "b1", "label": "bitte", "actions": [":home"], "ext_lautstark_speak_on_navigate": true } ]"""
+
+        /** The speaking flag on a button 7.4 disables. */
+        const val SPEAKING_UNKNOWN_ACTION =
+            """[ { "id": "b1", "label": "Zwei", "action": ":quatsch", "ext_lautstark_speak_on_navigate": true } ]"""
+
+        /** SPEC.md 7.3's "both modifiers on one button", which no fixture writes. */
+        const val CARRYING_AND_SPEAKING =
+            """[ { "id": "b1", "label": "Ich will", "vocalization": "ich will", "load_board": { "id": "essen" },
+                   "ext_lautstark_append_on_navigate": true, "ext_lautstark_speak_on_navigate": true } ]"""
     }
 
     private fun archive(vararg members: Pair<String, String>): ByteArray {
@@ -132,6 +145,54 @@ class SpecRulesTest {
         // nothing worth telling a caregiver about.
         val button = onlyButton(CARRYING_PLAIN_WORD)
         assertEquals(OnActivate.Append, button.onActivate)
+    }
+
+    @Test
+    fun `speak-on-navigate does not ride on an actions array holding colon-home either`() {
+        // The narrowing, on the spelling the fixture does not use. SPEC.md 7.3
+        // keeps this modifier on `load_board` alone, so both spellings of the
+        // `:home` button ignore it - and if the two disagreed, a board would
+        // behave differently depending on which of two identical ways its
+        // author happened to write the same button.
+        val button = onlyButton(SPEAKING_HOME_ARRAY)
+        assertEquals(OnActivate.Home, button.onActivate)
+    }
+
+    @Test
+    fun `speak-on-navigate on a disabled button says nothing at all`() {
+        // SPEC.md 7.4 disables a button carrying an action this importer does
+        // not implement, and doing nothing is what disabled means. The failure
+        // this guards against is the audible twin of the appending one above: a
+        // button that looks dead and speaks when it is pressed.
+        val button = onlyButton(SPEAKING_UNKNOWN_ACTION)
+        assertEquals(OnActivate.Disabled, button.onActivate)
+        val bar = MessageBar()
+        assertEquals("a disabled button must not speak", null, bar.press(button))
+    }
+
+    @Test
+    fun `both modifiers on one button append the entry and speak it, without warning`() {
+        // SPEC.md 7.3 defines this rather than forbidding it, because 10.3's
+        // posture is that a viewer does not fail on what it did not expect. It
+        // is not a shape any Lautstark builder writes - the two flags belong to
+        // two board models and neither editor offers both - so no fixture
+        // reaches it and it is pinned here.
+        val button = onlyButton(CARRYING_AND_SPEAKING)
+        assertEquals(
+            OnActivate.SpeakThenNavigate(OnActivate.Navigate("essen"), alsoAppends = true),
+            button.onActivate,
+        )
+
+        val bar = MessageBar()
+        assertEquals("ich will", bar.press(button))
+        assertEquals(listOf("ich will"), bar.contents().mapNotNull { it.spoken })
+
+        // "An importer MUST NOT warn about it", in as many words.
+        val accepted =
+            BoardPackageImporter.import(
+                archive("manifest.json" to manifest(), "boards/b.obf" to board(buttons = CARRYING_AND_SPEAKING)),
+            ) as ImportResult.Accepted
+        assertTrue("both modifiers together must not warn", accepted.warnings.isEmpty())
     }
 
     @Test

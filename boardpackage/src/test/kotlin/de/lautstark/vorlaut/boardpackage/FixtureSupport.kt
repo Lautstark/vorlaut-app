@@ -96,6 +96,7 @@ internal fun walkScenario(
             when (val action = button.onActivate) {
                 is OnActivate.Navigation -> destinationOf(action, boardPackage)
                 is OnActivate.AppendThenNavigate -> destinationOf(action.then, boardPackage)
+                is OnActivate.SpeakThenNavigate -> destinationOf(action.then, boardPackage)
                 else -> showing
             }
 

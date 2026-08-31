@@ -111,7 +111,9 @@ class BoardViewModel(
         val entries = bar.contents()
 
         when (action) {
-            OnActivate.Append, OnActivate.SpeakImmediately, is OnActivate.AppendThenNavigate -> {
+            OnActivate.Append, OnActivate.SpeakImmediately,
+            is OnActivate.AppendThenNavigate, is OnActivate.SpeakThenNavigate,
+            -> {
                 // The button's own voice: its clip, or silence if it has none.
                 //
                 // A carrying button speaks like the word button it also is, and
@@ -145,9 +147,18 @@ class BoardViewModel(
          * word that opened it is not.
          */
         val landing =
-            (action as? OnActivate.AppendThenNavigate)
-                ?.let { destination(it.then, boardPackage) }
-                ?: _state.value.currentBoardId
+            when (action) {
+                is OnActivate.AppendThenNavigate -> destination(action.then, boardPackage)
+
+                // The speaking modifier lands the same way, and the speech
+                // above is deliberately not stopped for it either: the word is
+                // the reason the button carries the flag, and cutting it off
+                // at the board change would leave the press indistinguishable
+                // from the plain navigation beside it.
+                is OnActivate.SpeakThenNavigate -> destination(action.then, boardPackage)
+
+                else -> _state.value.currentBoardId
+            }
 
         // What the bar shows is the vocalization, not the label — SPEC.md 7.3,
         // which now says so outright. MessageBar decides it; this only stores

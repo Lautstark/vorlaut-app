@@ -31,9 +31,17 @@ internal object Actions {
         // no way to say. Fixture navigate-and-append pins that on its c3.
         val carries = button.bool("ext_lautstark_append_on_navigate") == true
 
+        // SPEC.md 7.3, since 1.4.0: the appending modifier's sibling, read the
+        // same way and ignored the same way. What differs is its reach, and the
+        // difference is deliberate rather than an omission - see [speaking].
+        val speaks = button.bool("ext_lautstark_speak_on_navigate") == true
+
         // SPEC.md 7.3: load_board takes precedence over an action if a button
         // somehow carries both.
-        button.obj("load_board")?.str("id")?.let { return carrying(OnActivate.Navigate(it), carries) }
+        button.obj("load_board")?.str("id")?.let {
+            return speaking(OnActivate.Navigate(it), speaks, carries)
+                ?: carrying(OnActivate.Navigate(it), carries)
+        }
 
         val actions = button.arr("actions")?.mapNotNull { it.asStringOrNull() }
         if (!actions.isNullOrEmpty()) {
@@ -79,6 +87,25 @@ internal object Actions {
         resolved: OnActivate,
         carries: Boolean,
     ): OnActivate = if (carries && resolved is OnActivate.Navigation) OnActivate.AppendThenNavigate(resolved) else resolved
+
+    /**
+     * SPEC.md 7.3's speak-on-navigate, which rides on `load_board` and nothing
+     * else. Null when the flag is absent, so the caller falls through to
+     * [carrying] and the appending modifier answers on its own.
+     *
+     * **This is only ever called at the `load_board` site**, which is the whole
+     * of the narrowing: SPEC.md 7.3 says the modifier is not extended to
+     * `action: ":home"` and MUST be ignored beside it, so the `:home` sites
+     * below never ask. Nothing warns there - an ignored flag is ignored in
+     * silence, exactly as the appending one is where it has no navigation.
+     * Fixture `navigate-and-speak` pairs its `e2` and `e3` to pin it: a `:home`
+     * button carrying the flag and one without must be indistinguishable.
+     */
+    private fun speaking(
+        resolved: OnActivate.Navigate,
+        speaks: Boolean,
+        carries: Boolean,
+    ): OnActivate? = if (speaks) OnActivate.SpeakThenNavigate(resolved, alsoAppends = carries) else null
 
     private fun disable(
         action: String,
