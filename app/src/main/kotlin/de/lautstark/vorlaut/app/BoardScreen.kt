@@ -754,6 +754,7 @@ private fun speaks(button: Button) =
         OnActivate.Append, OnActivate.SpeakImmediately,
         is OnActivate.AppendThenNavigate, is OnActivate.SpeakThenNavigate,
         -> true
+
         else -> false
     }
 

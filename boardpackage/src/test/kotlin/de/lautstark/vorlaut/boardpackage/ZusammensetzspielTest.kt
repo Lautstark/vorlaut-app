@@ -262,7 +262,11 @@ class ZusammensetzspielTest {
 
     @Test
     fun `every key that speaks resolves audio, and the wedge cannot tell the answers apart`() {
-        val answers = accepted.boardPackage.boards.single { it.id == "runde-01" }.buttons.filter { it.id.startsWith("antwort-") }
+        val answers =
+            accepted.boardPackage.boards
+                .single { it.id == "runde-01" }
+                .buttons
+                .filter { it.id.startsWith("antwort-") }
         assertEquals(4, answers.size)
 
         // All four are the same shape. This is the whole reason a wrong key
@@ -287,7 +291,9 @@ class ZusammensetzspielTest {
     @Test
     fun `nothing in the game appends, because no board here has a bar`() {
         val bar = MessageBar()
-        accepted.boardPackage.boards.flatMap { it.buttons }.forEach { bar.press(it) }
+        accepted.boardPackage.boards
+            .flatMap { it.buttons }
+            .forEach { bar.press(it) }
         assertTrue(
             "the speaking modifier must not touch the bar, on any key of any board",
             bar.contents().isEmpty(),

@@ -149,12 +149,14 @@ class BoardViewModel(
         val landing =
             when (action) {
                 is OnActivate.AppendThenNavigate -> destination(action.then, boardPackage)
+
                 // The speaking modifier lands the same way, and the speech
                 // above is deliberately not stopped for it either: the word is
                 // the reason the button carries the flag, and cutting it off
                 // at the board change would leave the press indistinguishable
                 // from the plain navigation beside it.
                 is OnActivate.SpeakThenNavigate -> destination(action.then, boardPackage)
+
                 else -> _state.value.currentBoardId
             }
 
