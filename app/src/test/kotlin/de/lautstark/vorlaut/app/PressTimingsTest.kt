@@ -83,16 +83,50 @@ class PressTimingsTest {
     }
 
     @Test
-    fun `a pair left by the millisecond pickers maps to the nearest mode`() {
-        // The migration. Those pickers existed for one afternoon, but silently
-        // discarding a setting somebody chose is the failure this file is
-        // careful about everywhere else.
-        assertEquals(PressMode.AtOnce, PressMode.nearest(PressTimings(0, 0)))
-        assertEquals(PressMode.Once, PressMode.nearest(PressTimings(0, 500)))
-        assertEquals(PressMode.Held, PressMode.nearest(PressTimings(500, 1000)))
-        // The pair used while testing the first build, which is the one pair
-        // known to exist anywhere.
-        assertEquals(PressMode.Held, PressMode.nearest(PressTimings(800, 1500)))
+    fun `a Sammlung is named only by the mode it is actually at`() {
+        // What replaced naming the nearest mode. Every mode answers itself...
+        for (mode in PressMode.entries) {
+            assertEquals(mode, PressMode.of(mode.timings))
+        }
+        // ...and a pair that is no mode answers nothing, so the screen falls
+        // back to the numbers rather than to a name that is nearly right.
+        assertEquals(null, PressMode.of(PressTimings(800, 0)))
+        assertEquals(null, PressMode.of(PressTimings(300, 500)))
+    }
+
+    @Test
+    fun `naming the nearest mode would have described boards as their opposite`() {
+        // The case that made exactness worth the fallback string. A Sammlung
+        // with a long deliberate hold and no pause is nearer to AtOnce than to
+        // anything else, by the plain distance between two pairs - so the screen
+        // used to describe it as "every touch counts straight away", which is
+        // not an approximation of that board but the reverse of it.
+        val longHold = PressTimings(holdMs = 800, releaseMs = 0)
+        val nearest =
+            PressMode.entries.minBy {
+                val h = it.timings.holdMs - longHold.holdMs
+                val r = it.timings.releaseMs - longHold.releaseMs
+                h * h + r * r
+            }
+        assertEquals("the old rule really did answer this", PressMode.AtOnce, nearest)
+        assertEquals(null, PressMode.of(longHold))
+    }
+
+    @Test
+    fun `converting an old override rounds up, never down`() {
+        // The migration for a pair left by the millisecond pickers, which
+        // existed for one afternoon. Rounding up can only hand somebody more
+        // protection than they asked for; the nearest mode could switch off a
+        // hold they had deliberately set, which is the wrong direction for a
+        // guess to fail in.
+        assertEquals(PressMode.AtOnce, PressMode.atLeast(PressTimings(0, 0)))
+        assertEquals(PressMode.Once, PressMode.atLeast(PressTimings(0, 300)))
+        assertEquals(PressMode.Held, PressMode.atLeast(PressTimings(300, 500)))
+        // The pair that made this rule necessary: nearest answers AtOnce and
+        // takes the hold away.
+        assertEquals(PressMode.Held, PressMode.atLeast(PressTimings(800, 0)))
+        // Stronger than anything on offer, so the strongest there is.
+        assertEquals(PressMode.Held, PressMode.atLeast(PressTimings(800, 1500)))
     }
 
     @Test

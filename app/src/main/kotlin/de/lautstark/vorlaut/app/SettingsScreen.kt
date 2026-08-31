@@ -212,9 +212,20 @@ private fun noteOf(mode: PressMode) =
         PressMode.Held -> R.string.press_mode_held_note
     }
 
-/** What a Sammlung is asking for, in the words of the mode nearest to it. */
+/**
+ * What a Sammlung is asking for: the name of the mode it is at, or its two
+ * numbers where it is at none of them.
+ *
+ * Naming the *nearest* mode is what this did, and it could report a board with
+ * an 800 ms hold on it as "Sofort — jede Berührung zählt sofort". The editor now
+ * offers these same three modes, so a Sammlung written by it always matches one
+ * exactly; a manifest from anywhere else may carry any pair SPEC.md 7.5 allows,
+ * and for those the numbers are the only answer that is true.
+ */
 @Composable
-private fun describe(timings: PressTimings): String = stringResource(nameOf(PressMode.nearest(timings)))
+private fun describe(timings: PressTimings): String =
+    PressMode.of(timings)?.let { stringResource(nameOf(it)) }
+        ?: stringResource(R.string.press_own, timings.holdMs, timings.releaseMs)
 
 /** One choice: a name, a line about it, and the box that lights up when it is
  *  the one in force. The shape the word-colour options take in the editor. */

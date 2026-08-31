@@ -58,14 +58,17 @@ internal fun clampTiming(ms: Int): Int = ms.coerceIn(0, MAX_PRESS_TIMING_MS)
 /**
  * The three ways a board can answer a touch, as a caregiver picks them.
  *
- * **Named modes here, milliseconds in the editor, and that split is the point.**
- * The two numbers underneath are real and SPEC.md 7.5 defines them precisely, but
+ * **The same three the editor offers, with the same names and numbers.** The two
+ * milliseconds underneath are real and SPEC.md 7.5 defines them precisely, but
  * nobody tuning this for their own child thinks in milliseconds — they know the
- * symptom. Two questions with six numeric steps each is an author's control, and
- * the author already has one: `accessPanel` in `vorlaut-editor` still offers
- * every value, because somebody building a board sets a considered default once.
- * This screen is where a parent adjusts on a bad afternoon, and it should ask a
- * question they can answer from what they just watched happen.
+ * symptom.
+ *
+ * These were modes here and millisecond steps in `accessPanel` for a day, on the
+ * argument that an author sets a considered default while a parent adjusts on a
+ * bad afternoon. The argument was fine and the split was not: they are the same
+ * person, the step lists could not express two of these three pairs at all, and
+ * [of] had to guess which mode a package meant. One vocabulary, in both
+ * programs, is what makes that guess unnecessary.
  *
  * **Ordered cheapest first, which is the whole design.** [Once] costs nothing —
  * a pause after a press is not felt until the *next* word — and it fixes one
@@ -100,20 +103,44 @@ enum class PressMode(
 
     companion object {
         /**
-         * The mode a stored pair of numbers means.
+         * The mode a pair of numbers *is*, or null for a pair that is no mode.
          *
-         * Only ever needed for a pair written by the millisecond pickers this
-         * screen used to have, which existed for one afternoon. Rather than
-         * discard a setting somebody chose — the failure this whole file is
-         * careful about elsewhere — the nearest mode is taken and written back,
-         * so the screen shows something true and the legacy keys go.
+         * **Exact, and it used to be nearest, which was a bug worth keeping the
+         * shape of.** A package may carry any two numbers SPEC.md 7.5 allows,
+         * and this screen has to say what the open Sammlung is asking for. When
+         * that answer was the closest mode, a Sammlung with an 800 ms hold and
+         * no pause came out as "Sofort — jede Berührung zählt sofort", which is
+         * not an approximation of what that board does but the opposite of it.
+         * Four of the twenty-five pairs the editor could then produce were exact
+         * ties, decided by nothing better than the order the entries happen to
+         * be declared in.
+         *
+         * The editor now offers these same three modes and nothing between them,
+         * so a package written by it always matches one. What is left unmatched
+         * is a hand-edited manifest or one from another builder, and for those
+         * the honest answer is the two numbers rather than a name that is
+         * nearly right.
          */
-        fun nearest(timings: PressTimings): PressMode =
-            entries.minBy { mode ->
-                val hold = mode.timings.holdMs - timings.holdMs
-                val release = mode.timings.releaseMs - timings.releaseMs
-                hold * hold + release * release
-            }
+        fun of(timings: PressTimings): PressMode? = entries.firstOrNull { it.timings == timings }
+
+        /**
+         * The gentlest mode that is at least as careful as the pair given.
+         *
+         * For converting an override left by the millisecond pickers this screen
+         * had for one afternoon. Deliberately not the *nearest* mode: nearest
+         * moves in whichever direction is shorter, so a caregiver who had asked
+         * for an 800 ms hold and no pause would have been converted to "Sofort"
+         * and had their hold switched off by an upgrade. Rounding up can only
+         * give somebody more protection than they asked for, which is the
+         * direction a wrong guess should fail in here.
+         *
+         * A pair stronger than every mode falls back to the strongest there is,
+         * because there is nothing above it to round to.
+         */
+        fun atLeast(timings: PressTimings): PressMode =
+            entries.firstOrNull {
+                it.timings.holdMs >= timings.holdMs && it.timings.releaseMs >= timings.releaseMs
+            } ?: entries.last()
     }
 }
 
@@ -152,9 +179,9 @@ class PressSettings(
      * The mode this tablet is set to, or null to take the Sammlung's.
      *
      * Reading migrates a pair left by the millisecond pickers this screen used to
-     * have: it is mapped to the nearest mode and written back, so the legacy keys
-     * exist for exactly one read and a setting somebody chose is not silently
-     * dropped.
+     * have: it is rounded up to a mode at least as careful and written back, so
+     * the legacy keys exist for exactly one read and a setting somebody chose is
+     * neither dropped nor quietly weakened.
      */
     var mode: PressMode?
         get() {
@@ -167,7 +194,7 @@ class PressSettings(
                     holdMs = read(KEY_HOLD) ?: 0,
                     releaseMs = read(KEY_RELEASE) ?: 0,
                 )
-            return PressMode.nearest(legacy).also { mode = it }
+            return PressMode.atLeast(legacy).also { mode = it }
         }
         set(value) =
             preferences.edit {
