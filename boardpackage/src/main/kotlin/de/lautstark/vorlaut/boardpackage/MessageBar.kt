@@ -122,6 +122,23 @@ class MessageBar {
                 press(button.copy(onActivate = OnActivate.Append))
             }
 
+            // SPEC.md 7.3's speak-on-navigate. The bar is **not** touched: this
+            // is the speaking modifier, for a board that has no bar to append
+            // to, and saying the word is the whole of what it adds to the
+            // navigation. Delegated to the two rows it is made of for the same
+            // reason the appending one is - what an entry holds and what a
+            // press says are each decided in one place.
+            is OnActivate.SpeakThenNavigate -> {
+                if (button.onActivate.alsoAppends) {
+                    // Both modifiers on one button: append the entry *and* say
+                    // it, then navigate. Not a shape any builder writes, and
+                    // defined rather than forbidden so that a viewer does not
+                    // fail on what it did not expect.
+                    press(button.copy(onActivate = OnActivate.Append))
+                }
+                press(button.copy(onActivate = OnActivate.SpeakImmediately))
+            }
+
             is OnActivate.Sequence -> {
                 // SPEC.md 7.4 defines no semantics for several implemented actions
                 // in one button, and no fixture exercises it. Running them in order

@@ -20,12 +20,48 @@ deliberate change with a test run attached, never a routine bump.
 ## Current state
 
 ```properties
-exchange.sha=793739d33ad6d3dcc7f23c5c6dedb68840d749fc
+exchange.sha=1f6055b4aa424a6c1b137282b95176d55c8018a2
 ```
 
-That commit carries `SPEC.md` 1.2.0 and fifteen fixtures, all of which pass.
+That commit carries `SPEC.md` 1.4.0 and seventeen fixtures, all of which pass.
 
-**Moved from `4055c1f` for an address rather than a version — the first time
+1.4.0 adds `ext_lautstark_speak_on_navigate` (SPEC.md 4.3, 7.3): a navigating
+button may speak its own audio before it navigates. The fixture is
+`navigate-and-speak`, written as the twin of `navigate-and-append` — same two
+boards, same words, the same flagged-against-unflagged pair at the same target —
+and the one new `on_activate` value it states is `speak+navigate:<board id>`.
+`Actions` reads the field and `NavigateAndSpeakTest` holds the importer against
+the fixture.
+
+**A minor bump, so the importer at the old pin would still have imported this
+fixture** — it would have ignored the unknown field under §10.3 and navigated in
+silence. What it would not have done is pass, for the same reason 1.2.0's move
+gives: the fixture states the compound `on_activate`, and that is the difference
+between the intended degradation and conformance.
+
+**The modifier is narrower than its sibling, and that is deliberate.**
+`append_on_navigate` rides on `load_board` *and* on `action: ":home"`;
+`speak_on_navigate` rides on `load_board` **only**, and beside `:home` it MUST be
+ignored. SPEC.md §7.3 argues it in its own paragraph — the modifier exists for
+one authoring model, a key naming the page it leads to, and a board model with no
+message bar has no start page either — and says a future minor version may widen
+it. The fixture pins it from the other side: `e2` carries the flag beside `:home`
+and `e3` does not, and the two must be indistinguishable. So an importer that
+widened the rule on its own goes red rather than passing quietly, which is the
+property this pin exists for. `OnActivate.SpeakThenNavigate.then` is typed
+`Navigate` and not `Navigation` so the narrowing is the compiler's rather than a
+comment's; **widening that field is the change if the narrowing is ever
+retracted.**
+
+This move skips 1.3.0's entry in this file — the pin went from `793739d` to
+`6faae3d` for `ext_lautstark_hold_time_ms` and `ext_lautstark_release_time_ms`
+(SPEC.md 4.1, 7.5), which `BoardPackageImporter` reads and `PressTimingTest`
+holds against the `press-timings` fixture, and this file was not written up with
+it.
+
+Before that, `793739d` (1.2.0, fifteen).
+
+**That one moved from `4055c1f` for an address rather than a version — the first time
 this pin has moved without the fixtures changing at all.** The spec left
 `Lautstark/vorlaut-diy-talker` on 2026-08-27 under
 [ADR 0012](https://github.com/Lautstark/vorlaut-diy-talker/blob/main/adr/0012-the-repository-splits-editor-leaves.md),

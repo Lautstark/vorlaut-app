@@ -294,6 +294,15 @@ private fun ButtonCell(
                 Wedge.Onward
             }
 
+            // A key that says its sentence and then leads on. Two facts and one
+            // corner, so the wedge states the one the person pressing has to
+            // know before they press: the page is about to change. That it also
+            // speaks is a fact they get by pressing it, which is not true of
+            // where they are about to be standing.
+            is OnActivate.SpeakThenNavigate -> {
+                Wedge.Onward
+            }
+
             OnActivate.SpeakImmediately -> {
                 Wedge.Sound
             }
@@ -733,6 +742,7 @@ private fun describe(
         OnActivate.Home -> append(", zur Startseite")
         is OnActivate.Navigate -> append(", öffnet eine Seite")
         is OnActivate.AppendThenNavigate -> append(", und öffnet eine Seite")
+        is OnActivate.SpeakThenNavigate -> append(", spricht und öffnet eine Seite")
         OnActivate.SpeakImmediately -> append(", spricht sofort")
         else -> Unit
     }
@@ -741,7 +751,9 @@ private fun describe(
 /** Whether a press on this button is meant to make a sound at all. */
 private fun speaks(button: Button) =
     when (button.onActivate) {
-        OnActivate.Append, OnActivate.SpeakImmediately, is OnActivate.AppendThenNavigate -> true
+        OnActivate.Append, OnActivate.SpeakImmediately,
+        is OnActivate.AppendThenNavigate, is OnActivate.SpeakThenNavigate,
+        -> true
         else -> false
     }
 
