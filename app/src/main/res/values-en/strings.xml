@@ -70,6 +70,7 @@
     <string name="press_mode_once_note">One press counts once, even if the finger trembles or bounces. Costs no time.</string>
     <string name="press_mode_held">Only when held</string>
     <string name="press_mode_held_note">A button counts only once the finger has rested on it briefly. Helps when other buttons are brushed on the way — but every word takes longer.</string>
+    <string name="press_own">Own values (%1$d ms / %2$d ms)</string>
     <string name="press_note">Applies on this tablet, to every collection. What is set here is used instead of what the collection brings with it — and stays set when the collection is sent again.</string>
     <string name="pin_setting_title">A PIN for the way out of the board</string>
     <string name="pin_setting_on">A PIN is set. Leaving the board asks for it.</string>
