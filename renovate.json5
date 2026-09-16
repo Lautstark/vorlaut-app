@@ -41,17 +41,19 @@
 //     configured for it deliberately. docs/exchange-pin.md explains why:
 //     moving it is a decision about which revision of the spec this viewer
 //     claims to meet, and the suite failing is how that decision gets made.
-//     A pull request that merged itself on a Monday morning would be the
-//     wrong shape for it, the same way @lautstark/* bumps are elsewhere.
+//     A branch that merged itself on a Monday morning would be the wrong
+//     shape for it - the way a *major* of a shared package is elsewhere,
+//     since 2026-09-16, when the minors and patches started merging
+//     themselves once a consumer's tests pass.
 //
 //   app/src/main/kotlin/de/lautstark/vorlaut/app/design/
 //     The design tokens, a port of Lautstark/design rather than a dependency
 //     on it. Tokens.kt names its source and the accent it was generated from,
 //     which is the provenance Lautstark/design's own conventions.md §7 asks
 //     for - but no version, because a generated file may not carry one. In the
-//     three browser products the version lives in the pin in package.json, and
-//     `pins.js` reads it and says which pins are behind. There is no pin here
-//     to read. So this port going stale is the one drift in the family that
+//     browser products the version lives in the range in package.json, and
+//     Renovate brings a new one when it is published. There is no range here
+//     to bring anything to. So this port going stale is the one drift in the family that
 //     nothing reports, and no Renovate configuration can be the thing that
 //     changes that.
 //
