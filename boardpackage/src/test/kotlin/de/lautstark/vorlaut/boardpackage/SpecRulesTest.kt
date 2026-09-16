@@ -148,14 +148,16 @@ class SpecRulesTest {
     }
 
     @Test
-    fun `speak-on-navigate does not ride on an actions array holding colon-home either`() {
-        // The narrowing, on the spelling the fixture does not use. SPEC.md 7.3
-        // keeps this modifier on `load_board` alone, so both spellings of the
-        // `:home` button ignore it - and if the two disagreed, a board would
-        // behave differently depending on which of two identical ways its
-        // author happened to write the same button.
+    fun `speak-on-navigate rides on an actions array holding colon-home too`() {
+        // The widening, on the spelling the fixture does not use. SPEC.md 7.3
+        // since 1.5.0 puts this modifier on both navigating forms, so both
+        // spellings of the `:home` button carry it - and if the two disagreed,
+        // a board would behave differently depending on which of two identical
+        // ways its author happened to write the same button. That is the same
+        // argument the appending flag's array test above makes, which is the
+        // point: the two modifiers now answer alike everywhere.
         val button = onlyButton(SPEAKING_HOME_ARRAY)
-        assertEquals(OnActivate.Home, button.onActivate)
+        assertEquals(OnActivate.SpeakThenNavigate(OnActivate.Home), button.onActivate)
     }
 
     @Test

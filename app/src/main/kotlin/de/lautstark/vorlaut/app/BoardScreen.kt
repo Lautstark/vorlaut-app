@@ -249,9 +249,11 @@ private fun ButtonCell(
      * spelling it. `:home` is none of those. Drawn as a word it reads as one,
      * and on a first board it is the only button that is not.
      *
-     * Only a bare `:home`. AppendThenNavigate(Home) is a word that also goes
-     * home — "bitte", said and then back to the start — and it keeps its
-     * label, its tint and its paper, because it really is one.
+     * Only a bare `:home`. A carrier on `:home` is a word that also goes home
+     * — "bitte", put in the sentence or said out loud and then back to the
+     * start — and it keeps its label, its tint and its paper, because it really
+     * is one. That is AppendThenNavigate(Home), and since SPEC.md 1.5.0
+     * SpeakThenNavigate(Home) beside it.
      *
      * And only where the package left the colour to us. The note above says
      * this viewer draws what it was given and has no switch of its own; a
@@ -273,9 +275,9 @@ private fun ButtonCell(
      * A navigation drawn as [chrome] is left alone. The plate already says the
      * press changes the page, and better than a corner does; a wedge on top
      * would be two marks for one fact, which is the mistake the editor has
-     * already had to undo once. AppendThenNavigate(Home) is not chrome — it
-     * keeps its paper and its word — so it does take the wedge, because on that
-     * cell nothing else says the page is about to change.
+     * already had to undo once. A carrier on `:home` is not chrome — it keeps
+     * its paper and its word — so it does take the wedge, because on that cell
+     * nothing else says the page is about to change.
      */
     val wedge: Wedge? =
         when (button.onActivate) {
@@ -299,6 +301,10 @@ private fun ButtonCell(
             // know before they press: the page is about to change. That it also
             // speaks is a fact they get by pressing it, which is not true of
             // where they are about to be standing.
+            //
+            // Since SPEC.md 1.5.0 the page it leads to may be the start page —
+            // a `Bye` that says itself and goes home — and the answer is the
+            // same either way, which is why this arm does not look at [then].
             is OnActivate.SpeakThenNavigate -> {
                 Wedge.Onward
             }
@@ -314,7 +320,9 @@ private fun ButtonCell(
             is OnActivate.Sequence -> {
                 when {
                     (button.onActivate as OnActivate.Sequence).actions.any {
-                        it is OnActivate.Navigation || it is OnActivate.AppendThenNavigate
+                        it is OnActivate.Navigation ||
+                            it is OnActivate.AppendThenNavigate ||
+                            it is OnActivate.SpeakThenNavigate
                     } -> Wedge.Onward
 
                     else -> null

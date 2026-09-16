@@ -134,9 +134,14 @@ data class SpecVersion(
          * made good; this constant only reports it. Moving it without the
          * fixtures moving under it turns a fact into a claim.
          *
-         * 1.4.0's whole addition is `ext_lautstark_speak_on_navigate` (SPEC.md
-         * 4.3, 7.3), which Actions reads and NavigateAndSpeakTest holds against
-         * the `navigate-and-speak` fixture.
+         * 1.5.0's whole change is that `ext_lautstark_speak_on_navigate`
+         * (SPEC.md 4.3, 7.3, 7.4) now rides on `action: ":home"` as well as on
+         * `load_board`, which is what 1.4.0 made a viewer ignore. Actions
+         * applies it to both and NavigateAndSpeakTest holds that against the
+         * `navigate-and-speak` fixture, whose `e2` states `speak+home`.
+         *
+         * 1.4.0's addition is `ext_lautstark_speak_on_navigate` itself, on
+         * `load_board` alone.
          *
          * 1.3.0's addition is `ext_lautstark_hold_time_ms` and
          * `ext_lautstark_release_time_ms` (SPEC.md 4.1, 7.5), which
@@ -152,7 +157,7 @@ data class SpecVersion(
          * a higher minor something an importer MUST accept, so lagging behind
          * one was never a rejection, only a smaller claim than the truth.
          */
-        val IMPLEMENTED = SpecVersion(1, 4, 0)
+        val IMPLEMENTED = SpecVersion(1, 5, 0)
 
         fun parse(value: String): SpecVersion? {
             val parts = value.split('.')
@@ -206,11 +211,11 @@ sealed interface OnActivate {
     /**
      * The two presses that change which board is showing.
      *
-     * They are one type because SPEC.md 7.3's append-on-navigate applies to both
-     * and to nothing else, so [AppendThenNavigate] can hold exactly the things
-     * it is allowed to hold rather than any `OnActivate` and a rule in prose.
-     * The screen has the same question — where does this press go — and gets to
-     * ask it once.
+     * They are one type because SPEC.md 7.3's two modifiers apply to both and to
+     * nothing else, so [AppendThenNavigate] and [SpeakThenNavigate] can hold
+     * exactly the things they are allowed to hold rather than any `OnActivate`
+     * and a rule in prose. The screen has the same question — where does this
+     * press go — and gets to ask it once.
      */
     sealed interface Navigation : OnActivate
 
@@ -286,21 +291,26 @@ sealed interface OnActivate {
      * there is nothing for it to join. **The bar is not touched at all**: this
      * is the speaking modifier, and it says nothing about the bar.
      *
-     * [then] is a [Navigate] and deliberately not a [Navigation]. SPEC.md 7.3
-     * narrows this modifier to `load_board` — unlike the appending one it is
-     * **not** extended to `action: ":home"`, and beside `:home` it MUST be
-     * ignored — and a type that cannot hold `Home` is the narrowing stated
-     * where the compiler can check it rather than in prose next to a wider
-     * field. Fixture `navigate-and-speak` pins it on its `e2`. The spec says a
-     * future minor version may widen it if a board model turns up that wants
-     * both; widening this field is that change.
+     * [then] is a [Navigation], so it holds `:home` as well as `load_board`.
+     * 1.4.0 narrowed this modifier to `load_board` alone and this field was a
+     * [Navigate], which put that narrowing where the compiler could check it.
+     * 1.5.0 retracted it: the argument for the narrowing — a board model with
+     * no message bar has no start page either — is true of the five-key talker
+     * and was written as a rule for every product, and `ext_lautstark_*` is the
+     * cross-product namespace. The shape it makes room for is an ordinary one:
+     * a `Bye` that says itself and returns to the root board is this modifier
+     * on `:home`. Fixture `navigate-and-speak` pins it on its `e2`, where it
+     * used to pin the opposite.
      */
     data class SpeakThenNavigate(
-        val then: Navigate,
+        val then: Navigation,
         /**
-         * SPEC.md 7.3's "both modifiers on one button": a `load_board` button
-         * carrying both flags appends its entry *and* speaks it, then
-         * navigates, and an importer MUST NOT warn about it.
+         * SPEC.md 7.3's "both modifiers on one button": a button carrying both
+         * flags appends its entry *and* speaks it, then navigates, and an
+         * importer MUST NOT warn about it. The paragraph says `load_board`
+         * because that is where 1.4.0 let the speaking flag ride; now that both
+         * modifiers reach both navigating forms, a `:home` button carrying both
+         * is the same sentence and gets the same answer.
          *
          * A flag inside the wrapper rather than a third wrapper beside it. The
          * argument against a flag on [Navigate] and [Home] does not reach here
