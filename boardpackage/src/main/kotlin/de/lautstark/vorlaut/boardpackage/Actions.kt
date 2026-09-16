@@ -32,15 +32,14 @@ internal object Actions {
         val carries = button.bool("ext_lautstark_append_on_navigate") == true
 
         // SPEC.md 7.3, since 1.4.0: the appending modifier's sibling, read the
-        // same way and ignored the same way. What differs is its reach, and the
-        // difference is deliberate rather than an omission - see [speaking].
+        // same way, applied the same way and ignored the same way. Since 1.5.0
+        // its reach is the same too - see [modified].
         val speaks = button.bool("ext_lautstark_speak_on_navigate") == true
 
         // SPEC.md 7.3: load_board takes precedence over an action if a button
         // somehow carries both.
         button.obj("load_board")?.str("id")?.let {
-            return speaking(OnActivate.Navigate(it), speaks, carries)
-                ?: carrying(OnActivate.Navigate(it), carries)
+            return modified(OnActivate.Navigate(it), speaks, carries)
         }
 
         val actions = button.arr("actions")?.mapNotNull { it.asStringOrNull() }
@@ -63,13 +62,14 @@ internal object Actions {
             // the board. A longer sequence carries nothing - the flag says
             // "append before navigating", and there is no navigation in a
             // sequence, only steps.
-            return resolved.singleOrNull()?.let { carrying(it, carries) } ?: OnActivate.Sequence(resolved)
+            return resolved.singleOrNull()?.let { modified(it, speaks, carries) } ?: OnActivate.Sequence(resolved)
         }
 
         button.str("action")?.let { action ->
-            // A disabled button appends nothing either: doing nothing at all is
-            // what disabled means, and carrying() is not reached for it.
-            return IMPLEMENTED[action]?.let { carrying(it, carries) }
+            // A disabled button appends nothing and says nothing either: doing
+            // nothing at all is what disabled means, and modified() is not
+            // reached for it.
+            return IMPLEMENTED[action]?.let { modified(it, speaks, carries) }
                 ?: disable(action, boardId, buttonId, warnings)
         }
 
@@ -81,31 +81,36 @@ internal object Actions {
         return OnActivate.Append
     }
 
-    /** SPEC.md 7.3's append-on-navigate, applied where there is a navigation to
-     *  apply it to. Everything else is returned untouched. */
-    private fun carrying(
-        resolved: OnActivate,
-        carries: Boolean,
-    ): OnActivate = if (carries && resolved is OnActivate.Navigation) OnActivate.AppendThenNavigate(resolved) else resolved
-
     /**
-     * SPEC.md 7.3's speak-on-navigate, which rides on `load_board` and nothing
-     * else. Null when the flag is absent, so the caller falls through to
-     * [carrying] and the appending modifier answers on its own.
+     * SPEC.md 7.3's two modifiers, applied where there is a navigation to apply
+     * them to. Everything else is returned untouched, in silence: no warning
+     * and no fault, because an appending button already appends and a
+     * speak-immediately button carrying either flag meant something the format
+     * has no way to say.
      *
-     * **This is only ever called at the `load_board` site**, which is the whole
-     * of the narrowing: SPEC.md 7.3 says the modifier is not extended to
-     * `action: ":home"` and MUST be ignored beside it, so the `:home` sites
-     * below never ask. Nothing warns there - an ignored flag is ignored in
-     * silence, exactly as the appending one is where it has no navigation.
-     * Fixture `navigate-and-speak` pairs its `e2` and `e3` to pin it: a `:home`
-     * button carrying the flag and one without must be indistinguishable.
+     * **Both flags reach both navigating forms**, `load_board` and
+     * `action: ":home"` alike, which is SPEC.md 1.5.0's change. 1.4.0 narrowed
+     * the speaking one to `load_board` and this function was two, so that the
+     * `:home` sites could not ask. They ask now, and there is one place that
+     * decides what a modifier does to a navigation rather than two that have to
+     * agree.
+     *
+     * Speaking wins where a button carries both, because [OnActivate.SpeakThenNavigate]
+     * is the shape that can say "and it appends too" and the appending wrapper
+     * is not - which is SPEC.md 7.3's "both modifiers on one button", where the
+     * button appends its entry *and* speaks it, then navigates.
      */
-    private fun speaking(
-        resolved: OnActivate.Navigate,
+    private fun modified(
+        resolved: OnActivate,
         speaks: Boolean,
         carries: Boolean,
-    ): OnActivate? = if (speaks) OnActivate.SpeakThenNavigate(resolved, alsoAppends = carries) else null
+    ): OnActivate =
+        when {
+            resolved !is OnActivate.Navigation -> resolved
+            speaks -> OnActivate.SpeakThenNavigate(resolved, alsoAppends = carries)
+            carries -> OnActivate.AppendThenNavigate(resolved)
+            else -> resolved
+        }
 
     private fun disable(
         action: String,

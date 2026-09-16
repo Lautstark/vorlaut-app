@@ -138,6 +138,17 @@ val provideExchangeFixtures =
 tasks.test {
     dependsOn(provideExchangeFixtures)
     systemProperty("exchange.fixtures", fixturesOutput.get().asFile.absolutePath)
+    // The fixtures are an *input*, not merely a dependency. Without this line
+    // `dependsOn` re-fetches them and the test task stays UP-TO-DATE, because
+    // the only thing it tracks about them is the path they sit at - so moving
+    // the pin re-downloads a different spec and reports a pass from the run
+    // before it. That is the stale-fixture failure this whole arrangement
+    // exists to prevent, arrived at from the third side: not a copy, not an
+    // unset pin, but a suite that was never asked to run again.
+    inputs
+        .dir(fixturesOutput)
+        .withPropertyName("exchangeFixtures")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
 val forbidAndroidImports =

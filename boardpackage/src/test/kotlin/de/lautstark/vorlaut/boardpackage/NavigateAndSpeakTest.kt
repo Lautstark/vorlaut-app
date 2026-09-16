@@ -6,7 +6,7 @@ import org.junit.Test
 
 /**
  * The `navigate-and-speak` fixture: SPEC.md 7.3's speak-on-navigate, added in
- * 1.4.0.
+ * 1.4.0 and widened to `action: ":home"` in 1.5.0.
  *
  * The twin of `navigate-and-append` and worth reading beside it. Same two
  * boards, same words, the same flagged-against-unflagged pair at the same
@@ -50,12 +50,22 @@ class NavigateAndSpeakTest {
     }
 
     @Test
-    fun `the flag beside an action is ignored, which is where it differs from its sibling`() {
-        // SPEC.md 7.3 narrows this modifier to `load_board`: unlike
-        // append-on-navigate it is **not** extended to `action: ":home"`, and
-        // beside `:home` it MUST be ignored. e2 carries the flag and e3 does
-        // not, and the fixture's point is that the two are indistinguishable.
-        assertEquals(OnActivate.Home, button("essen", "e2").onActivate)
+    fun `the flag rides on colon-home too, which is where it stopped differing from its sibling`() {
+        // SPEC.md 7.3 since 1.5.0: this modifier rides on both navigating
+        // forms, exactly as append-on-navigate has since 1.2.0. e2 carries the
+        // flag beside `:home` and e3 does not, and the fixture's point is now
+        // that the two are told apart - it pinned the opposite at 1.4.0, when
+        // the flag beside `:home` had to be ignored.
+        //
+        // What the shape is for is a `Bye` that says itself and goes back to
+        // the start board. The narrowing it replaces was a fact about the
+        // five-key talker, which will never write the flag beside `:home`
+        // because it has no `:home` to write - and that is a fact about one
+        // export rather than a rule this format states.
+        assertEquals(
+            OnActivate.SpeakThenNavigate(OnActivate.Home),
+            button("essen", "e2").onActivate,
+        )
         assertEquals(OnActivate.Home, button("essen", "e3").onActivate)
     }
 

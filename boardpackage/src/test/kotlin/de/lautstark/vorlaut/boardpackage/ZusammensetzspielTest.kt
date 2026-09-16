@@ -173,11 +173,22 @@ class ZusammensetzspielTest {
         showing: String,
     ): String =
         when (val action = button.onActivate) {
+            is OnActivate.Navigation -> destination(action)
+
+            is OnActivate.AppendThenNavigate -> error("nothing in this game appends")
+
+            // Since SPEC.md 1.5.0 the speaking modifier rides on `:home` too,
+            // so this asks the navigation it wraps where it goes rather than
+            // reading a board id off it.
+            is OnActivate.SpeakThenNavigate -> destination(action.then)
+
+            else -> showing
+        }
+
+    private fun destination(action: OnActivate.Navigation): String =
+        when (action) {
             is OnActivate.Navigate -> action.boardId
             OnActivate.Home -> accepted.boardPackage.rootBoardId
-            is OnActivate.AppendThenNavigate -> error("nothing in this game appends")
-            is OnActivate.SpeakThenNavigate -> action.then.boardId
-            else -> showing
         }
 
     @Test
