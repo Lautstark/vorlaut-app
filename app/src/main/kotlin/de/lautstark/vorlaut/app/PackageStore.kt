@@ -8,6 +8,7 @@ import de.lautstark.vorlaut.boardpackage.ReimportDecision
 import de.lautstark.vorlaut.boardpackage.StoredPackage
 import de.lautstark.vorlaut.boardpackage.decideReimport
 import java.io.File
+import java.security.MessageDigest
 import java.time.Instant
 
 /**
@@ -61,12 +62,33 @@ class PackageStore(
     private val packagesDir = File(root, "packages")
     private val stagingDir = File(root, "staging")
 
-    fun list(): List<Entry> =
+    /**
+     * Ordered by package id, not by directory name. The two used to be the
+     * same order, because the directory *was* the id with its punctuation
+     * flattened; now that a directory name ends in a hash, sorting by it would
+     * shuffle the list the day a tablet migrates, for no reason a person could
+     * see.
+     */
+    fun list(): List<Entry> = stored().map { it.second }.sortedBy { it.boardPackage.id }
+
+    /** Every readable package directory, with what was read out of it. */
+    private fun stored(): List<Pair<File, Entry>> =
         packagesDir
             .listFiles()
             .orEmpty()
-            .sortedBy { it.name }
-            .mapNotNull { read(it) }
+            .filter { it.isDirectory }
+            .mapNotNull { directory -> read(directory)?.let { directory to it } }
+
+    /**
+     * The directory currently holding package [id], whatever it is called.
+     *
+     * Found by the id inside the archive rather than computed from the id,
+     * because a tablet that has been in use since before [directoryNameFor]
+     * changed holds its packages under the old, lossy names — and those have
+     * to keep opening, updating and being removed as if nothing had happened.
+     * The manifest is the one name for a package that has never changed.
+     */
+    private fun locate(id: String): File? = stored().firstOrNull { it.second.boardPackage.id == id }?.first
 
     private fun read(directory: File): Entry? {
         val archive = File(directory, ARCHIVE_NAME).takeIf { it.isFile } ?: return null
@@ -92,14 +114,14 @@ class PackageStore(
             }
 
             is ReimportDecision.InstallNew -> {
-                commit(incoming, bytes)
-                Outcome.Installed(Entry(incoming, accepted.warnings, archiveFor(incoming.id)))
+                val directory = commit(incoming, bytes)
+                Outcome.Installed(Entry(incoming, accepted.warnings, File(directory, ARCHIVE_NAME)))
             }
 
             is ReimportDecision.Replace -> {
-                commit(incoming, bytes)
+                val directory = commit(incoming, bytes)
                 Outcome.Replaced(
-                    Entry(incoming, accepted.warnings, archiveFor(incoming.id)),
+                    Entry(incoming, accepted.warnings, File(directory, ARCHIVE_NAME)),
                     decision.stored,
                 )
             }
@@ -114,29 +136,61 @@ class PackageStore(
      * the device must never end an import with no working vocabulary. So the new
      * copy is staged complete, the old directory is moved aside rather than
      * deleted, and only once the new one is in place is the old one removed.
+     *
+     * What gets moved aside is the directory that *holds this id*, found by
+     * reading it ([locate]) — never whatever happens to sit at the name this id
+     * would be given. Those were once the same thing, and that is how
+     * `family.home` arriving deleted `family_home`: both flattened to one
+     * directory name, and the second import replaced the first package as if it
+     * were an update to it. A package installed under its old name is
+     * replaced by one under its new name, so a tablet migrates one Sammlung at
+     * a time, as each is next updated, and needs no migration step of its own.
+     *
+     * Returns the directory the package now lives in.
      */
     private fun commit(
         boardPackage: BoardPackage,
         bytes: ByteArray,
-    ) {
+    ): File {
         packagesDir.mkdirs()
         stagingDir.mkdirs()
-        val staged = File(stagingDir, "${directoryNameFor(boardPackage.id)}-${System.nanoTime()}")
+        val name = directoryNameFor(boardPackage.id)
+        val staged = File(stagingDir, "$name-${System.nanoTime()}")
         staged.deleteRecursively()
         staged.mkdirs()
         File(staged, ARCHIVE_NAME).writeBytes(bytes)
 
-        val destination = File(packagesDir, directoryNameFor(boardPackage.id))
-        val displaced = File(stagingDir, "${destination.name}-displaced-${System.nanoTime()}")
-        val hadPrevious = destination.exists() && destination.renameTo(displaced)
-        if (!staged.renameTo(destination)) {
-            // Put the old one back before giving up. Ending here with neither is
-            // the outcome the atomicity rule exists to prevent.
-            if (hadPrevious) displaced.renameTo(destination)
+        val previous = locate(boardPackage.id)
+        val destination = File(packagesDir, name)
+        // Something already at the new name that is not this package. With a
+        // full SHA-256 in the name that is no longer a collision between ids;
+        // it would be a directory nobody can read. Whatever it is, it is not
+        // ours to delete — SPEC.md 8 is about one id replacing itself, and a
+        // directory whose package we cannot name is not provably that.
+        if (destination.exists() && destination != previous) {
+            staged.deleteRecursively()
+            error("could not install package ${boardPackage.id}: ${destination.name} is occupied")
+        }
+        val displaced =
+            previous?.let { old ->
+                File(stagingDir, "${old.name}-displaced-${System.nanoTime()}").takeIf { old.renameTo(it) }
+            }
+        // The old copy would not move. Carrying on would either fail at the
+        // rename below or, for a package under its old name, leave two copies
+        // of one id behind; stopping here leaves the old one exactly as it was.
+        if (previous != null && displaced == null) {
             staged.deleteRecursively()
             error("could not install package ${boardPackage.id}")
         }
-        if (hadPrevious) displaced.deleteRecursively()
+        if (!staged.renameTo(destination)) {
+            // Put the old one back before giving up. Ending here with neither is
+            // the outcome the atomicity rule exists to prevent.
+            if (previous != null) displaced?.renameTo(previous)
+            staged.deleteRecursively()
+            error("could not install package ${boardPackage.id}")
+        }
+        displaced?.deleteRecursively()
+        return destination
     }
 
     /**
@@ -148,25 +202,43 @@ class PackageStore(
      * expected to have asked.
      */
     fun remove(id: String) {
-        val directory = File(packagesDir, directoryNameFor(id))
-        if (!directory.exists()) return
+        // Located by what it holds, for the same reason [commit] does it: the
+        // directory may carry an old-style name, and the old-style name of
+        // this id may belong to a different package.
+        val directory = locate(id) ?: return
         stagingDir.mkdirs()
         val condemned = File(stagingDir, "${directory.name}-removed-${System.nanoTime()}")
         if (directory.renameTo(condemned)) condemned.deleteRecursively() else directory.deleteRecursively()
     }
 
-    private fun archiveFor(id: String) = File(File(packagesDir, directoryNameFor(id)), ARCHIVE_NAME)
-
     /**
      * A package id is opaque and arrives from a file somebody was handed, so it
      * never becomes a path component as-is.
+     *
+     * The name is a readable prefix — so that a person looking at the files
+     * directory can tell which Sammlung is which — and then the SHA-256 of the
+     * whole id, which is what actually makes it unique. The prefix alone is
+     * what this used to be, and it was not an identity: it flattened every
+     * character but letters, digits and `-` to `_` and cut at 64, so
+     * `family.home` and `family_home`, or two long ids sharing their first 64
+     * characters, were one directory, and SPEC.md 8 says those are two
+     * packages. Directories named the old way are still read; see [locate].
      */
-    private fun directoryNameFor(id: String): String =
-        id.map { if (it.isLetterOrDigit() || it == '-') it else '_' }.joinToString("").take(MAX_NAME)
+    private fun directoryNameFor(id: String): String {
+        val readable =
+            id
+                .map { if (it.isLetterOrDigit() || it == '-') it else '_' }
+                .joinToString("")
+                .take(READABLE_PREFIX)
+        val digest = MessageDigest.getInstance("SHA-256").digest(id.toByteArray(Charsets.UTF_8))
+        return readable + "-" + digest.joinToString("") { "%02x".format(it) }
+    }
 
     private companion object {
         const val ARCHIVE_NAME = "package.obz"
-        const val MAX_NAME = 64
+
+        /** 32 + 1 + 64 hex stays far below any filesystem's 255. */
+        const val READABLE_PREFIX = 32
     }
 }
 
