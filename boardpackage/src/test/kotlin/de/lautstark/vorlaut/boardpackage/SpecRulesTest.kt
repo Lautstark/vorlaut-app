@@ -232,6 +232,64 @@ class SpecRulesTest {
         assertEquals(RejectionCode.PATH_UNSAFE, rejectionOf(bytes))
     }
 
+    /**
+     * Rewrites the uncompressed size the central directory records for
+     * [member], and nothing else. ZipOutputStream always writes the true
+     * size, and the point here is an archive that does not.
+     */
+    private fun claimingSize(
+        bytes: ByteArray,
+        member: String,
+        size: Int,
+    ): ByteArray {
+        val patched = bytes.copyOf()
+        val name = member.toByteArray(Charsets.UTF_8)
+        for (at in 0..patched.size - 46 - name.size) {
+            val isCentral =
+                patched[at] == 0x50.toByte() &&
+                    patched[at + 1] == 0x4b.toByte() &&
+                    patched[at + 2] == 0x01.toByte() &&
+                    patched[at + 3] == 0x02.toByte()
+            if (isCentral && patched.copyOfRange(at + 46, at + 46 + name.size).contentEquals(name)) {
+                for (k in 0..3) patched[at + 24 + k] = (size ushr (8 * k)).toByte()
+                return patched
+            }
+        }
+        error("no directory entry for $member")
+    }
+
+    @Test
+    fun `a member that claims to be enormous is refused, not allocated`() {
+        // A couple of hundred bytes claiming 250 MB. The ratio check is silent
+        // below 4 KiB of compressed data, so this reached the allocator whole
+        // and came back as an OutOfMemoryError instead of a rejection.
+        val honest = archive("manifest.json" to manifest(), "boards/b.obf" to board())
+        val lying = claimingSize(honest, "manifest.json", 250_000_000)
+        assertEquals(RejectionCode.PACKAGE_UNREADABLE, rejectionOf(lying))
+    }
+
+    @Test
+    fun `a member that inflates past what it claimed is refused`() {
+        val honest = archive("manifest.json" to manifest(), "boards/b.obf" to board())
+        val lying = claimingSize(honest, "manifest.json", 10)
+        assertEquals(RejectionCode.PACKAGE_UNREADABLE, rejectionOf(lying))
+    }
+
+    @Test
+    fun `a large member that is honest about its size still imports`() {
+        // Larger than the first buffer inflate starts with, so it has to grow
+        // several times; and compressible enough to stay under the ratio
+        // floor, so nothing but inflate itself is looking at it.
+        val description = "a".repeat(300_000)
+        val padded =
+            board().replaceFirst(
+                "\"name\": \"Board\"",
+                "\"name\": \"Board\", \"description\": \"$description\"",
+            )
+        val bytes = archive("manifest.json" to manifest(), "boards/b.obf" to padded)
+        assertTrue(BoardPackageImporter.import(bytes) is ImportResult.Accepted)
+    }
+
     @Test
     fun `a metacom package that claims to be redistributable is refused`() {
         // SPEC.md 5.2. METACOM is licensed per person; baking its pixels into a
