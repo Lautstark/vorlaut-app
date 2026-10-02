@@ -87,8 +87,18 @@ internal class AppNavigation : ViewModel() {
 }
 
 class MainActivity : ComponentActivity() {
+    /**
+     * The intent a package may have arrived in, held where Compose can see it
+     * change. Set from onCreate and again from [onNewIntent]: a file opened
+     * while the app is already in front reaches the running activity there,
+     * not through onCreate, and `setIntent` alone recomposes nothing — the
+     * file was quietly dropped.
+     */
+    private var incoming by mutableStateOf<Intent?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        incoming = intent
         setContent {
             val model: ImportViewModel = viewModel()
             val state by model.state.collectAsState()
@@ -134,7 +144,7 @@ class MainActivity : ComponentActivity() {
                     ActivityResultContracts.OpenDocument(),
                 ) { uri -> uri?.let(model::importFrom) }
 
-            LaunchedEffect(Unit) { consumeIncoming(intent)?.let(model::importFrom) }
+            LaunchedEffect(incoming) { consumeIncoming(incoming)?.let(model::importFrom) }
 
             /* The front door. With a Sammlung on the device the app opens on the
                board it was last on — the list is where an adult goes on purpose,
@@ -397,6 +407,7 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        incoming = intent
     }
 
     /**

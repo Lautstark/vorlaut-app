@@ -488,7 +488,6 @@ private fun ButtonCell(
             ) { Txt("!", style = Vorlaut.type.small, color = c.dangerInk) }
         }
         if (disabled) DisabledCross(Modifier.fillMaxSize())
-        if (speaking) Unit
     }
 }
 
