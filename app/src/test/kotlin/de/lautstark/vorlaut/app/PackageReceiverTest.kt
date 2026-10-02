@@ -259,6 +259,32 @@ class PackageReceiverTest {
         }
     }
 
+    /**
+     * `Content-Length: -1` is smaller than any ceiling, so it used to be let
+     * through, announced on screen as a package of -1 bytes, and then thrown
+     * on by the allocation — and the sender heard nothing at all.
+     */
+    @Test
+    fun `a negative length is refused as no length, with an answer`() {
+        var reached = false
+        serving(onPackage = { reached = true }) { port ->
+            val answer =
+                send(
+                    port,
+                    "POST ${PackageReceiver.PATH} HTTP/1.1\r\n" +
+                        "Host: t\r\n" +
+                        "Content-Type: ${PackageReceiver.PACKAGE_MEDIA_TYPE}\r\n" +
+                        "Content-Length: -1\r\n\r\n",
+                )
+            assertEquals("411", answer.status)
+            assertTrue(
+                "the refusal must carry its code, was ${answer.body}",
+                answer.body.contains("\"reason\":\"${PackageReceiver.Codes.LENGTH_REQUIRED}\""),
+            )
+            assertTrue("nothing should have reached the importer", !reached)
+        }
+    }
+
     /** Nothing is listening once the screen is gone. */
     @Test
     fun `closing gives the port back`() {

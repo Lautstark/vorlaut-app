@@ -292,8 +292,18 @@ class PackageReceiver(
             return respond(out, 415, refusal(Codes.WRONG_MEDIA_TYPE, "a package is sent as $PACKAGE_MEDIA_TYPE"))
         }
 
+        // A negative length is not a length, and is answered as a missing one.
+        // It used to pass: -1 is not larger than the ceiling, so the screen
+        // announced a package of "-1" arriving, ByteArray(-1) threw, and the
+        // sender waited on a connection that closed without a word. 411 with
+        // the existing code, rather than a new one, because the codes are a
+        // contract with the editor and this is the refusal it already knows.
         val declared =
-            request.header("content-length")?.trim()?.toLongOrNull()
+            request
+                .header("content-length")
+                ?.trim()
+                ?.toLongOrNull()
+                ?.takeIf { it >= 0 }
                 ?: return respond(out, 411, refusal(Codes.LENGTH_REQUIRED, "the length of the package has to be declared"))
 
         // Answered from the declared length rather than after reading, so that
