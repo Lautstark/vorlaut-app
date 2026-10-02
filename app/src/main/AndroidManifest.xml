@@ -75,6 +75,17 @@
           there is nothing left for Android to do about it: AlwaysLandscape
           draws the board landscape whatever shape the window is, and no
           resource here is qualified by orientation. Compose simply remeasures.
+
+          uiMode, locale, layoutDirection, fontScale and density are left out
+          on purpose, because for those there *is* something for Android to
+          do: the strings come from values-en, the theme follows the night
+          mode, and text is sized by fontScale. Claiming them here would keep
+          the old strings and colours on screen until the next restart. So
+          those changes do recreate the activity, and the state that must
+          outlive it no longer lives in the composition: `route` and `opened`
+          are in MainActivity's AppNavigation view model, and BoardViewModel
+          declines to reopen the package it already holds — which is what
+          keeps the sentence bar when the tablet goes into dark mode.
         -->
         <activity
             android:name=".MainActivity"

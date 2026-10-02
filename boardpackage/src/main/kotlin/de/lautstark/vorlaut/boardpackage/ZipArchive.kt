@@ -73,6 +73,26 @@ internal class ZipArchive private constructor(
         }
     }
 
+    /**
+     * Inflates one member into a buffer that grows with what actually comes out,
+     * never one sized from the directory up front.
+     *
+     * The directory's uncompressed size is a claim, and it used to be the
+     * allocation: a 144-byte archive declaring a 250 MB member asked for
+     * 250 MB before a single byte was inflated, and the phone answered with
+     * an OutOfMemoryError — from an importer whose contract is that a bad
+     * package comes back as a rejection, not as a crash. The ratio check in
+     * [open] cannot catch it, because it deliberately says nothing below
+     * [RATIO_FLOOR] bytes of compressed data, which is exactly where a lie
+     * this cheap lives.
+     *
+     * So the declared size is now only the ceiling: nothing past it is
+     * accepted (a member that inflates to more than it claimed is as broken
+     * as one that inflates to less), and the memory spent is what the deflate
+     * stream really produces. Deflate cannot expand by more than about a
+     * thousand to one, so below the floor that is a few megabytes at worst,
+     * and above it [open] has already held the archive to its ratio.
+     */
     private fun inflate(
         raw: ByteArray,
         expected: Int,
@@ -81,16 +101,25 @@ internal class ZipArchive private constructor(
         val inflater = Inflater(true)
         try {
             inflater.setInput(raw)
-            val out = ByteArray(expected)
+            var out = ByteArray(minOf(expected, INITIAL_INFLATE_BUFFER))
             var written = 0
             while (written < expected && !inflater.finished()) {
-                val n = inflater.inflate(out, written, expected - written)
+                if (written == out.size) {
+                    out = out.copyOf(minOf(expected.toLong(), out.size * 2L).toInt())
+                }
+                val n = inflater.inflate(out, written, out.size - written)
                 if (n == 0 && (inflater.needsInput() || inflater.needsDictionary())) {
                     throw MalformedArchive("truncated deflate stream for $name")
                 }
                 written += n
             }
             if (written != expected) throw MalformedArchive("short inflate for $name")
+            // Full, but is the stream? A member that still has output to give
+            // claimed less than it holds; returning the first [expected] bytes
+            // would hand the parser a silently truncated file.
+            if (!inflater.finished() && inflater.inflate(ByteArray(1)) > 0) {
+                throw MalformedArchive("$name inflates past its declared size")
+            }
             return out
         } catch (e: java.util.zip.DataFormatException) {
             throw MalformedArchive("corrupt deflate stream for $name: ${e.message}")
@@ -141,6 +170,13 @@ internal class ZipArchive private constructor(
 
         /** Below this, a high ratio says nothing — headers alone skew the sums. */
         private const val RATIO_FLOOR = 4096L
+
+        /**
+         * Where [inflate] starts before it has seen any output. Most members
+         * are a symbol of a few kilobytes, so this is usually the only
+         * allocation; a larger one doubles from here.
+         */
+        private const val INITIAL_INFLATE_BUFFER = 64 * 1024
 
         fun normalise(name: String): String = Normalizer.normalize(name, Normalizer.Form.NFC)
 

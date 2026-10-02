@@ -60,6 +60,7 @@ import de.lautstark.vorlaut.boardpackage.Board
 import de.lautstark.vorlaut.boardpackage.Button
 import de.lautstark.vorlaut.boardpackage.ButtonState
 import de.lautstark.vorlaut.boardpackage.OnActivate
+import de.lautstark.vorlaut.boardpackage.navigation
 import kotlinx.coroutines.withTimeoutOrNull
 
 /**
@@ -317,16 +318,10 @@ private fun ButtonCell(
             // which no fixture exercises. Marked by what it contains rather
             // than by what it is: if one of its members turns the page, the
             // press turns the page, and that is the fact the wedge states.
+            // Asked through `navigation`, the same question the press asks,
+            // so the corner and the page turn cannot disagree again.
             is OnActivate.Sequence -> {
-                when {
-                    (button.onActivate as OnActivate.Sequence).actions.any {
-                        it is OnActivate.Navigation ||
-                            it is OnActivate.AppendThenNavigate ||
-                            it is OnActivate.SpeakThenNavigate
-                    } -> Wedge.Onward
-
-                    else -> null
-                }
+                if (button.onActivate.navigation != null) Wedge.Onward else null
             }
 
             OnActivate.Append, OnActivate.SpeakBar, OnActivate.Clear,
@@ -493,7 +488,6 @@ private fun ButtonCell(
             ) { Txt("!", style = Vorlaut.type.small, color = c.dangerInk) }
         }
         if (disabled) DisabledCross(Modifier.fillMaxSize())
-        if (speaking) Unit
     }
 }
 

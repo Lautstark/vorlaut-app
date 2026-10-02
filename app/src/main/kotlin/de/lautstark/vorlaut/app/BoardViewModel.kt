@@ -12,6 +12,8 @@ import de.lautstark.vorlaut.boardpackage.ImportWarning
 import de.lautstark.vorlaut.boardpackage.MessageBar
 import de.lautstark.vorlaut.boardpackage.OnActivate
 import de.lautstark.vorlaut.boardpackage.PackageArchive
+import de.lautstark.vorlaut.boardpackage.boardAfter
+import de.lautstark.vorlaut.boardpackage.navigation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -54,6 +56,12 @@ class BoardViewModel(
         warnings: List<ImportWarning>,
         archive: java.io.File,
     ) {
+        // Already on screen: leave it alone. Reopening resets the board to its
+        // start page and empties the sentence bar, and the person holding the
+        // tablet asked for neither — the usual way here was the activity
+        // being recreated under them by a dark-mode or language switch. A
+        // replaced package has a newer `modified` and does reopen.
+        if (boardPackage.isSameRevisionAs(_state.value.boardPackage)) return
         viewModelScope.launch {
             val loaded = withContext(Dispatchers.IO) { PackageArchive.open(archive.readBytes()) }
             media.clear()
@@ -103,7 +111,7 @@ class BoardViewModel(
         // Plain navigation: silent, and the bar goes with it untouched.
         if (action is OnActivate.Navigation) {
             speech.stop()
-            _state.value = state.copy(currentBoardId = destination(action, boardPackage))
+            _state.value = state.copy(currentBoardId = boardPackage.boardAfter(action, state.currentBoardId))
             return
         }
 
@@ -133,6 +141,13 @@ class BoardViewModel(
                 speakBar()
             }
 
+            // A sequence that turns the page turns it silently, the same as
+            // the plain navigation it ends in. Nothing in it is this button's
+            // own word, so there is nothing for the board change to cut off.
+            is OnActivate.Sequence -> {
+                if (action.navigation != null) speech.stop()
+            }
+
             else -> {
                 Unit
             }
@@ -145,37 +160,23 @@ class BoardViewModel(
          * MUST be in the bar by the time the new board is drawn, and two updates
          * would give Compose a frame in which the new board is on screen and the
          * word that opened it is not.
+         *
+         * The speaking modifier lands the same way, and the speech above is
+         * deliberately not stopped for it either: the word is the reason the
+         * button carries the flag, and cutting it off at the board change would
+         * leave the press indistinguishable from the plain navigation beside it.
+         *
+         * And a sequence lands where its navigation leads. It did not, before:
+         * only the two modifiers were asked, so `[":clear", ":home"]` cleared
+         * the bar and stayed put under a corner that said it would not.
          */
-        val landing =
-            when (action) {
-                is OnActivate.AppendThenNavigate -> destination(action.then, boardPackage)
-
-                // The speaking modifier lands the same way, and the speech
-                // above is deliberately not stopped for it either: the word is
-                // the reason the button carries the flag, and cutting it off
-                // at the board change would leave the press indistinguishable
-                // from the plain navigation beside it.
-                is OnActivate.SpeakThenNavigate -> destination(action.then, boardPackage)
-
-                else -> _state.value.currentBoardId
-            }
+        val landing = boardPackage.boardAfter(action, _state.value.currentBoardId)
 
         // What the bar shows is the vocalization, not the label — SPEC.md 7.3,
         // which now says so outright. MessageBar decides it; this only stores
         // what came back.
         _state.value = _state.value.copy(entries = entries, currentBoardId = landing)
     }
-
-    /** Which board a navigating press lands on. `:home` follows `manifest.root`
-     *  rather than wherever the walk started. */
-    private fun destination(
-        action: OnActivate.Navigation,
-        boardPackage: BoardPackage,
-    ): String? =
-        when (action) {
-            is OnActivate.Navigate -> action.boardId
-            OnActivate.Home -> boardPackage.rootBoardId
-        }
 
     /**
      * SPEC.md 9.2's clip, and none of its fallback.
@@ -226,6 +227,9 @@ class BoardViewModel(
         media.clear()
     }
 }
+
+/** Same package, same revision: what opening it again would change nothing about. */
+internal fun BoardPackage.isSameRevisionAs(other: BoardPackage?): Boolean = other != null && id == other.id && modified == other.modified
 
 data class BoardUiState(
     val boardPackage: BoardPackage? = null,

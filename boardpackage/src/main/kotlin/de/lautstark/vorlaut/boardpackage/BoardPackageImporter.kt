@@ -444,6 +444,20 @@ object BoardPackageImporter {
             )
         }
 
+        // SPEC.md 5: `data` is permitted and an importer MUST accept it. It is
+        // read only when there is no path - the path is what a builder is told
+        // to write, so where both are present the path is the one meant - and
+        // the URI then stands in for the path; see DataUri.
+        val inline = entry?.str("data")
+        if (path == null && inline != null) {
+            val bytes = DataUri.decode(inline)
+            if (bytes == null) {
+                warnings.add(WarningCode.IMAGE_UNDECODABLE, boardId, buttonId, "image $imageId carries data that is not a base64 data URI")
+                return ImageOutcome(path = null, degraded = true)
+            }
+            return checkImage(bytes, inline, "image $imageId (inline)", entry, boardId, buttonId, warnings)
+        }
+
         if (path == null) {
             // Covers the symbol-without-path case too: SPEC.md 5 makes an entry
             // carrying `symbol` but no usable path a button-level fault, since the
@@ -457,10 +471,27 @@ object BoardPackageImporter {
             warnings.add(WarningCode.IMAGE_MISSING, boardId, buttonId, "image $imageId names $path, which the package does not contain")
             return ImageOutcome(path = null, degraded = true)
         }
+        return checkImage(bytes, ZipArchive.normalise(path), "image $path", entry, boardId, buttonId, warnings)
+    }
 
+    /**
+     * SPEC.md 5.3's format and size rules, which are the same whether the bytes
+     * came out of the archive or out of a data URI. [address] is what the
+     * button will record; [described] is how a warning names the picture.
+     */
+    @Suppress("LongParameterList", "ReturnCount")
+    private fun checkImage(
+        bytes: ByteArray,
+        address: String,
+        described: String,
+        entry: JsonObject?,
+        boardId: String,
+        buttonId: String,
+        warnings: WarningList,
+    ): ImageOutcome {
         val dimensions = Media.dimensionsOf(bytes)
         if (dimensions == null) {
-            warnings.add(WarningCode.IMAGE_UNDECODABLE, boardId, buttonId, "image $path is not a PNG or JPEG this viewer can read")
+            warnings.add(WarningCode.IMAGE_UNDECODABLE, boardId, buttonId, "$described is not a PNG or JPEG this viewer can read")
             return ImageOutcome(path = null, degraded = true)
         }
         if (dimensions.exceedsCap) {
@@ -476,7 +507,7 @@ object BoardPackageImporter {
             )
             return ImageOutcome(path = null, degraded = true)
         }
-        return ImageOutcome(path = ZipArchive.normalise(path), degraded = false)
+        return ImageOutcome(path = address, degraded = false)
     }
 
     @Suppress("LongParameterList", "ReturnCount")
@@ -498,24 +529,36 @@ object BoardPackageImporter {
         if (soundId == null) return SoundOutcome(AudioSource.Tts, degraded = false)
 
         val entry = sounds[soundId]
-        val path = soundPaths[soundId] ?: entry?.str("path")
+        val archived = soundPaths[soundId] ?: entry?.str("path")
+        // SPEC.md 10 lists `data` on a sound as it does on an image, and it is
+        // read the same way: only where there is no path, and the URI then
+        // stands in for the path. See resolveImage and DataUri.
+        val inline = entry?.str("data")?.takeIf { archived == null }
+        val path = archived ?: inline
         if (path == null) {
             warnings.add(WarningCode.SOUND_MISSING, boardId, buttonId, "sound $soundId resolves to no file")
             return SoundOutcome(AudioSource.Tts, degraded = true)
         }
-        val bytes = archive.read(path)
+        val bytes = if (inline != null) DataUri.decode(inline) else archive.read(path)
+        if (bytes == null && inline != null) {
+            warnings.add(WarningCode.SOUND_UNDECODABLE, boardId, buttonId, "sound $soundId carries data that is not a base64 data URI")
+            return SoundOutcome(AudioSource.Tts, degraded = true)
+        }
         if (bytes == null) {
             warnings.add(WarningCode.SOUND_MISSING, boardId, buttonId, path)
             return SoundOutcome(AudioSource.Tts, degraded = true)
         }
+        // What the button records: the normalised member name, or the URI.
+        val address = inline ?: ZipArchive.normalise(path)
+        val described = if (inline != null) "sound $soundId (inline)" else "sound $path"
         return when (val audio = Media.inspectAudio(bytes)) {
             is Media.Audio.Undecodable -> {
-                warnings.add(WarningCode.SOUND_UNDECODABLE, boardId, buttonId, "sound $path is not Ogg Opus or 16 kHz mono PCM WAV")
+                warnings.add(WarningCode.SOUND_UNDECODABLE, boardId, buttonId, "$described is not Ogg Opus or 16 kHz mono PCM WAV")
                 SoundOutcome(AudioSource.Tts, degraded = true)
             }
 
             is Media.Audio.DurationUnknown -> {
-                SoundOutcome(AudioSource.Recorded(ZipArchive.normalise(path)), degraded = false)
+                SoundOutcome(AudioSource.Recorded(address), degraded = false)
             }
 
             is Media.Audio.Playable -> {
@@ -524,11 +567,11 @@ object BoardPackageImporter {
                         WarningCode.SOUND_TOO_LONG,
                         boardId,
                         buttonId,
-                        "sound $path runs ${audio.seconds}s, over ${Media.MAX_AUDIO_SECONDS}s",
+                        "$described runs ${audio.seconds}s, over ${Media.MAX_AUDIO_SECONDS}s",
                     )
                     SoundOutcome(AudioSource.Tts, degraded = true)
                 } else {
-                    SoundOutcome(AudioSource.Recorded(ZipArchive.normalise(path)), degraded = false)
+                    SoundOutcome(AudioSource.Recorded(address), degraded = false)
                 }
             }
         }

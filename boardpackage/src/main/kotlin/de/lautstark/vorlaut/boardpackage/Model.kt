@@ -189,7 +189,11 @@ data class Button(
     val label: String?,
     val vocalization: String?,
     val onActivate: OnActivate,
-    /** Archive path of the picture, NFC-normalised. Null when there is none. */
+    /**
+     * Archive path of the picture, NFC-normalised, or the `data:` URI the board
+     * carried it in (SPEC.md 5). Either way it is what [PackageArchive.read]
+     * takes. Null when there is none.
+     */
     val imagePath: String?,
     val audio: AudioSource?,
     val state: ButtonState,
@@ -349,9 +353,57 @@ sealed interface OnActivate {
     }
 }
 
+/**
+ * The page turn a press makes, or null when it leaves the page where it is.
+ *
+ * One answer for every shape, asked by both the grid's wedge and the board's
+ * press, because they used to answer separately and disagreed: the wedge
+ * looked inside a [OnActivate.Sequence] and drew the way-onward corner on
+ * `[":clear", ":home"]`, while the press handled only the shapes that *are* a
+ * navigation and left that button on the page it was on. A corner promising a
+ * page turn that never comes is worse than no corner.
+ *
+ * A sequence turns the page if any of its steps does, and to wherever the
+ * last of them leads — the steps run in order, so the last turn is the one
+ * the person is left standing on. Exhaustive rather than `else`, so that a
+ * new shape has to be asked this question.
+ */
+val OnActivate.navigation: OnActivate.Navigation?
+    get() =
+        when (this) {
+            is OnActivate.Navigation -> this
+
+            is OnActivate.AppendThenNavigate -> then
+
+            is OnActivate.SpeakThenNavigate -> then
+
+            is OnActivate.Sequence -> actions.mapNotNull { it.navigation }.lastOrNull()
+
+            OnActivate.Append, OnActivate.SpeakImmediately, OnActivate.SpeakBar,
+            OnActivate.Clear, OnActivate.Backspace, OnActivate.Disabled,
+            -> null
+        }
+
+/**
+ * Which board is showing after [action] is pressed on [current]. `:home`
+ * follows `manifest.root` rather than wherever the walk started.
+ */
+fun BoardPackage.boardAfter(
+    action: OnActivate,
+    current: String?,
+): String? =
+    when (val turn = action.navigation) {
+        null -> current
+        is OnActivate.Navigate -> turn.boardId
+        OnActivate.Home -> rootBoardId
+    }
+
 /** Where a button's own speech comes from. Null when the button makes no sound. */
 sealed interface AudioSource {
-    /** A clip baked into the package, at this archive path. */
+    /**
+     * A clip baked into the package, at this archive path — or carried inline,
+     * when [path] is the `data:` URI itself. [PackageArchive.read] takes either.
+     */
     data class Recorded(
         val path: String,
     ) : AudioSource

@@ -23,12 +23,17 @@ class PackageArchive private constructor(
      * already been accepted, and a member that has gone missing since is a
      * degraded button rather than a crash.
      */
-    fun read(path: String): ByteArray? =
-        try {
+    fun read(path: String): ByteArray? {
+        // A picture or clip the board carried inline (SPEC.md 5's `data`) is
+        // recorded by its URI in place of a path, so it is answered here, from
+        // the URI, and never looked for in the archive. See DataUri.
+        if (DataUri.isDataUri(path)) return DataUri.decode(path)
+        return try {
             archive.read(path)
         } catch (_: ZipArchive.MalformedArchive) {
             null
         }
+    }
 
     companion object {
         /** Null when [bytes] is not a readable package. */

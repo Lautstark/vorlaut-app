@@ -119,7 +119,18 @@ class ImportViewModel(
                         } catch (e: Exception) {
                             return@withContext ReadFailure(e.message ?: "the file could not be read")
                         }
-                    store.import(bytes)
+                    // Caught for the same reason [receive] catches it. The
+                    // importer turns a bad package into Outcome.Refused, so
+                    // what lands here is the device (no room to write it) or
+                    // a defect in the importer — and before this catch either
+                    // one escaped a coroutine on the view model's scope and
+                    // took the app down with it, which a caregiver sees as
+                    // "picking a file crashes the talker".
+                    try {
+                        store.import(bytes)
+                    } catch (e: Exception) {
+                        ReadFailure(e.message ?: "the package could not be read")
+                    }
                 }
             when (outcome) {
                 is ReadFailure -> {
