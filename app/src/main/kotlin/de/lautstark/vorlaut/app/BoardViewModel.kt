@@ -56,6 +56,12 @@ class BoardViewModel(
         warnings: List<ImportWarning>,
         archive: java.io.File,
     ) {
+        // Already on screen: leave it alone. Reopening resets the board to its
+        // start page and empties the sentence bar, and the person holding the
+        // tablet asked for neither — the usual way here was the activity
+        // being recreated under them by a dark-mode or language switch. A
+        // replaced package has a newer `modified` and does reopen.
+        if (boardPackage.isSameRevisionAs(_state.value.boardPackage)) return
         viewModelScope.launch {
             val loaded = withContext(Dispatchers.IO) { PackageArchive.open(archive.readBytes()) }
             media.clear()
@@ -221,6 +227,10 @@ class BoardViewModel(
         media.clear()
     }
 }
+
+/** Same package, same revision: what opening it again would change nothing about. */
+internal fun BoardPackage.isSameRevisionAs(other: BoardPackage?): Boolean =
+    other != null && id == other.id && modified == other.modified
 
 data class BoardUiState(
     val boardPackage: BoardPackage? = null,

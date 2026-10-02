@@ -26,6 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import de.lautstark.vorlaut.app.design.Vorlaut
 import de.lautstark.vorlaut.app.design.VorlautTheme
@@ -43,7 +44,7 @@ import kotlinx.coroutines.launch
  * its own bar and its own way back was more than an aside nobody answers on the
  * spot needed.
  */
-private sealed interface Route {
+internal sealed interface Route {
     data object Board : Route
 
     data object Sammlungen : Route
@@ -58,6 +59,31 @@ private sealed interface Route {
     data object Empfangen : Route
 
     data object Settings : Route
+}
+
+/**
+ * Where the app is, kept where an activity recreation cannot reach it.
+ *
+ * `route` and `opened` were `remember`ed in the composition, and a composition
+ * does not survive the activity being recreated. The manifest keeps rotation
+ * from doing that, but not a switch to dark mode, a new system language or a
+ * larger font — and each of those sent the front door round again: the board
+ * reopened from its start page with the sentence bar empty under a child who
+ * was halfway through a sentence, and an adult in Settings was pulled back to
+ * the board.
+ *
+ * A view model rather than `rememberSaveable`, on purpose. Saved state also
+ * survives the process being killed in the background, and BoardViewModel
+ * does not — so a saved `Board` route would come back over a board with
+ * nothing open in it, and a saved `opened` would stop the front door from
+ * fixing that. This lives exactly as long as the open board does, which is
+ * the lifetime the two have to agree on. After a process death the app starts
+ * fresh and the front door opens the board, which is what a cold start is
+ * meant to do.
+ */
+internal class AppNavigation : ViewModel() {
+    var route by mutableStateOf<Route>(Route.Sammlungen)
+    var opened by mutableStateOf(false)
 }
 
 class MainActivity : ComponentActivity() {
@@ -89,8 +115,9 @@ class MainActivity : ComponentActivity() {
             var pinWrong by remember { mutableStateOf(false) }
             val scope = rememberCoroutineScope()
 
-            var route by remember { mutableStateOf<Route>(Route.Sammlungen) }
-            var opened by remember { mutableStateOf(false) }
+            val navigation: AppNavigation = viewModel()
+            var route by navigation::route
+            var opened by navigation::opened
 
             // „Sammlung hinzufügen" asks which way first. There are two now and
             // only one of them is a file.
