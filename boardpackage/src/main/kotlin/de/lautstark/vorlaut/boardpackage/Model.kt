@@ -189,7 +189,11 @@ data class Button(
     val label: String?,
     val vocalization: String?,
     val onActivate: OnActivate,
-    /** Archive path of the picture, NFC-normalised. Null when there is none. */
+    /**
+     * Archive path of the picture, NFC-normalised, or the `data:` URI the board
+     * carried it in (SPEC.md 5). Either way it is what [PackageArchive.read]
+     * takes. Null when there is none.
+     */
     val imagePath: String?,
     val audio: AudioSource?,
     val state: ButtonState,
@@ -392,7 +396,10 @@ fun BoardPackage.boardAfter(
 
 /** Where a button's own speech comes from. Null when the button makes no sound. */
 sealed interface AudioSource {
-    /** A clip baked into the package, at this archive path. */
+    /**
+     * A clip baked into the package, at this archive path — or carried inline,
+     * when [path] is the `data:` URI itself. [PackageArchive.read] takes either.
+     */
     data class Recorded(
         val path: String,
     ) : AudioSource
