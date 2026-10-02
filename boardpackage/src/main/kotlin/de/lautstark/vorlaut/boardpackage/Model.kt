@@ -349,6 +349,47 @@ sealed interface OnActivate {
     }
 }
 
+/**
+ * The page turn a press makes, or null when it leaves the page where it is.
+ *
+ * One answer for every shape, asked by both the grid's wedge and the board's
+ * press, because they used to answer separately and disagreed: the wedge
+ * looked inside a [OnActivate.Sequence] and drew the way-onward corner on
+ * `[":clear", ":home"]`, while the press handled only the shapes that *are* a
+ * navigation and left that button on the page it was on. A corner promising a
+ * page turn that never comes is worse than no corner.
+ *
+ * A sequence turns the page if any of its steps does, and to wherever the
+ * last of them leads — the steps run in order, so the last turn is the one
+ * the person is left standing on. Exhaustive rather than `else`, so that a
+ * new shape has to be asked this question.
+ */
+val OnActivate.navigation: OnActivate.Navigation?
+    get() =
+        when (this) {
+            is OnActivate.Navigation -> this
+            is OnActivate.AppendThenNavigate -> then
+            is OnActivate.SpeakThenNavigate -> then
+            is OnActivate.Sequence -> actions.mapNotNull { it.navigation }.lastOrNull()
+            OnActivate.Append, OnActivate.SpeakImmediately, OnActivate.SpeakBar,
+            OnActivate.Clear, OnActivate.Backspace, OnActivate.Disabled,
+            -> null
+        }
+
+/**
+ * Which board is showing after [action] is pressed on [current]. `:home`
+ * follows `manifest.root` rather than wherever the walk started.
+ */
+fun BoardPackage.boardAfter(
+    action: OnActivate,
+    current: String?,
+): String? =
+    when (val turn = action.navigation) {
+        null -> current
+        is OnActivate.Navigate -> turn.boardId
+        OnActivate.Home -> rootBoardId
+    }
+
 /** Where a button's own speech comes from. Null when the button makes no sound. */
 sealed interface AudioSource {
     /** A clip baked into the package, at this archive path. */

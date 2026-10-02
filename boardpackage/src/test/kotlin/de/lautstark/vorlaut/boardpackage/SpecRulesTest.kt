@@ -198,6 +198,34 @@ class SpecRulesTest {
     }
 
     @Test
+    fun `a sequence ending in colon-home goes home`() {
+        // `[":clear", ":home"]`: the grid drew the way-onward corner on it and
+        // the press stayed on the page. The press now asks the question the
+        // corner asks, and both get this answer.
+        val bytes =
+            archive(
+                "manifest.json" to manifest(),
+                "boards/b.obf" to board(buttons = """[ { "id": "b1", "label": "Neu", "actions": [":clear", ":home"] } ]"""),
+            )
+        val boardPackage = (BoardPackageImporter.import(bytes) as ImportResult.Accepted).boardPackage
+        val action =
+            boardPackage.boards
+                .single()
+                .buttons
+                .single()
+                .onActivate
+        assertTrue(action is OnActivate.Sequence)
+        assertEquals(OnActivate.Home, action.navigation)
+        assertEquals("the root board, from wherever it was pressed", "b", boardPackage.boardAfter(action, "elsewhere"))
+    }
+
+    @Test
+    fun `a sequence with no navigation in it stays on the page`() {
+        val action = onlyButton("""[ { "id": "b1", "label": "Weg", "actions": [":speak", ":clear"] } ]""").onActivate
+        assertEquals(null, action.navigation)
+    }
+
+    @Test
     fun `a member name that escapes the archive root is refused`() {
         // Zip-slip. On Android this writes outside the app's storage, which is why
         // SPEC.md 2 requires rejecting the package without extracting it.
