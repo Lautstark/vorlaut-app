@@ -372,9 +372,13 @@ val OnActivate.navigation: OnActivate.Navigation?
     get() =
         when (this) {
             is OnActivate.Navigation -> this
+
             is OnActivate.AppendThenNavigate -> then
+
             is OnActivate.SpeakThenNavigate -> then
+
             is OnActivate.Sequence -> actions.mapNotNull { it.navigation }.lastOrNull()
+
             OnActivate.Append, OnActivate.SpeakImmediately, OnActivate.SpeakBar,
             OnActivate.Clear, OnActivate.Backspace, OnActivate.Disabled,
             -> null

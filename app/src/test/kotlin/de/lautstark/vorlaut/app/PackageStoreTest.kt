@@ -238,7 +238,12 @@ class PackageStoreTest {
         installTheOldWay(root, fixture("identity-a.obz"), ID_A)
         val store = PackageStore(root)
         assertEquals(listOf(ID_A), store.list().map { it.boardPackage.id })
-        assertTrue(store.list().single().archive.isFile)
+        assertTrue(
+            store
+                .list()
+                .single()
+                .archive.isFile,
+        )
     }
 
     @Test

@@ -229,8 +229,7 @@ class BoardViewModel(
 }
 
 /** Same package, same revision: what opening it again would change nothing about. */
-internal fun BoardPackage.isSameRevisionAs(other: BoardPackage?): Boolean =
-    other != null && id == other.id && modified == other.modified
+internal fun BoardPackage.isSameRevisionAs(other: BoardPackage?): Boolean = other != null && id == other.id && modified == other.modified
 
 data class BoardUiState(
     val boardPackage: BoardPackage? = null,

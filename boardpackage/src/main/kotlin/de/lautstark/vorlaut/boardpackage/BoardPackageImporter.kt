@@ -489,7 +489,6 @@ object BoardPackageImporter {
         buttonId: String,
         warnings: WarningList,
     ): ImageOutcome {
-
         val dimensions = Media.dimensionsOf(bytes)
         if (dimensions == null) {
             warnings.add(WarningCode.IMAGE_UNDECODABLE, boardId, buttonId, "$described is not a PNG or JPEG this viewer can read")
