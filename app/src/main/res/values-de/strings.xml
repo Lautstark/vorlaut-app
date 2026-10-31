@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The German. The default (values/) is English, for devices in a language the
+  app does not have; see the comment there.
+-->
+<resources>
+    <string name="import_board_package">Sammlung öffnen</string>
+
+    <string name="add_collection">Sammlung hinzufügen</string>
+    <string name="settings">Einstellungen</string>
+    <string name="back">Zurück</string>
+
+    <string name="empty_headline">Noch keine Sammlung auf diesem Gerät.</string>
+    <!--
+      Zwei Endungen, weil es zwei gibt. Der Editor nennt seine App-Ausgabe
+      .zip — nicht aus Nachlässigkeit, sondern weil Chrome auf Android sich
+      bei einer unbekannten Endung nach dem Medientyp richtet und eine als
+      application/zip deklarierte .obz gar nicht erst herunterlädt. Andere
+      AAC-Programme und die Talker-Ausgabe des Editors liefern .obz, und
+      diese App nimmt beides. Hier stand nur .obz, also genau die Endung der
+      zwei Ausgaben, die nicht für sie gedacht sind.
+    -->
+    <string name="empty_body">Eine Sammlung kommt als Datei aus dem Editor — .zip aus dessen App-Ausgabe, .obz aus anderen Programmen. Öffne sie aus den Dateien, teile sie mit dieser App, oder hol sie unten herein.</string>
+    <string name="empty_footnote">Ohne Sammlung hat dieses Gerät nichts zu sagen.</string>
+
+    <string name="not_redistributable">nicht weitergeben</string>
+    <!--
+      Plurals rather than one format string: "1 Tafeln" is simply wrong, and a
+      viewer whose first Sammlung has one board would have shown it on the very
+      first screen anybody sees. Two quantities cannot share one plural, so the
+      two halves are separate and joined by the separator below.
+    -->
+    <plurals name="boards">
+        <item quantity="one">%d Tafel</item>
+        <item quantity="other">%d Tafeln</item>
+    </plurals>
+    <plurals name="buttons">
+        <item quantity="one">%d Taste</item>
+        <item quantity="other">%d Tasten</item>
+    </plurals>
+    <plurals name="warnings_count">
+        <item quantity="one">%d Warnung</item>
+        <item quantity="other">%d Warnungen</item>
+    </plurals>
+    <string name="added">„%1$s“ hinzugefügt.</string>
+    <string name="replaced">„%1$s“ ersetzt.</string>
+    <string name="not_newer">„%1$s“ ist nicht neuer als die gespeicherte Fassung und wurde nicht übernommen.</string>
+    <string name="refused">%1$s: %2$s</string>
+    <string name="nothing_missing_body">Jede Taste hat, was sie versprochen hat.</string>
+    <string name="warnings_intro">Diese Sammlung funktioniert. Ändern kann das nur, wer sie gebaut hat — die Reihenfolge unten ist die, in der es auf der Tafel steht.</string>
+    <string name="no_warnings">Nichts fehlt in dieser Sammlung.</string>
+
+    <string name="page_back">Im Satz zurückblättern</string>
+    <string name="page_forward">Im Satz weiterblättern</string>
+    <string name="speak">Sprechen</string>
+    <string name="undo">Rückgängig</string>
+    <string name="clear">Leeren</string>
+    <string name="leave_board">Lange drücken, um die Tafel zu verlassen</string>
+
+    <string name="pin_choose_title">PIN wählen</string>
+    <string name="pin_choose_body">Vier Ziffern. Damit kommst du wieder aus der Tafel heraus, wenn das Tablet aus der Hand gegeben ist — nimm etwas, worüber du nicht nachdenken musst.</string>
+    <string name="pin_enter_title">PIN eingeben</string>
+    <string name="pin_enter_body">Damit wird die Tafel verlassen und das Tablet wieder freigegeben.</string>
+    <string name="pin_set">PIN setzen</string>
+    <string name="pin_unlock">Entsperren</string>
+    <string name="pin_wrong">Das ist nicht die PIN.</string>
+    <string name="cancel">Abbrechen</string>
+
+    <string name="open_security_settings">Android-Sicherheitseinstellungen öffnen</string>
+    <!--
+      Klartext für jeden Code, für ein Elternteil und nicht für die Person, die
+      die Sammlung gebaut hat. Diese zwölf standen bis hierher englisch in der
+      deutschen Datei — „A picture is missing.“ sagt einer deutschen Leserin
+      nichts, und genau das ist ausgeliefert worden.
+    -->
+    <string name="w_image_missing">Ein Bild fehlt. Die Taste zeigt nur ihre Beschriftung.</string>
+    <string name="w_image_oversized">Ein Bild ist zu groß zum Anzeigen, die Taste hat deshalb keines.</string>
+    <string name="w_image_undecodable">Ein Bild war nicht lesbar, die Taste hat deshalb keines.</string>
+    <string name="w_sound_missing">Eine Aufnahme fehlt. Die Taste bleibt stumm und ist markiert.</string>
+    <string name="w_sound_undecodable">Eine Aufnahme war nicht lesbar. Die Taste bleibt stumm und ist markiert.</string>
+    <string name="w_sound_too_long">Eine Aufnahme ist länger als 30 Sekunden. Die Taste bleibt stumm und ist markiert.</string>
+    <string name="w_action_unsupported">Diese Taste verlangt etwas, das diese App nicht kann, und ist deshalb abgeschaltet.</string>
+    <string name="w_button_missing">Auf der Tafel ist eine Lücke, wo eine Taste stehen sollte.</string>
+    <string name="w_path_normalization">Eine Datei in der Sammlung heißt ungewöhnlich. Sie wurde trotzdem gefunden.</string>
+    <string name="w_path_conflict">Die Sammlung ist sich uneins darüber, wo eine Datei liegt.</string>
+    <string name="w_image_reference_ignored">Ein Bild zeigte zusätzlich ins Netz. Genommen wurde das aus der Sammlung.</string>
+    <string name="w_color_unparseable">Eine Farbe war nicht lesbar, also wurde die übliche genommen.</string>
+    <string name="press_title">Wann zählt eine Berührung?</string>
+    <string name="press_body">Wenn ein Druck mehrfach ankommt oder beim Zielen die falsche Taste erwischt wird, hilft eine der unteren Einstellungen. Am besten die erste nehmen, die reicht — die letzte macht die Tafel spürbar langsamer.</string>
+    <string name="press_follow_package">Aus der Sammlung</string>
+    <string name="press_follow_package_is">Zurzeit: %1$s</string>
+    <string name="press_mode_at_once">Sofort</string>
+    <string name="press_mode_at_once_note">Jede Berührung zählt sofort.</string>
+    <string name="press_mode_once">Einmal pro Druck</string>
+    <string name="press_mode_once_note">Ein Druck zählt einmal, auch wenn der Finger zittert oder nachfedert. Kostet keine Zeit.</string>
+    <string name="press_mode_held">Erst beim Halten</string>
+    <string name="press_mode_held_note">Eine Taste zählt erst, wenn der Finger kurz liegen bleibt. Hilft, wenn beim Zielen andere Tasten gestreift werden — jedes Wort dauert dadurch aber länger.</string>
+    <string name="press_own">Eigene Werte (%1$d ms / %2$d ms)</string>
+    <string name="press_note">Gilt auf diesem Tablet, für jede Sammlung. Was hier eingestellt ist, gilt statt dem, was die Sammlung mitbringt — und bleibt auch dann stehen, wenn die Sammlung neu übertragen wird.</string>
+    <string name="pin_setting_title">PIN für den Weg aus der Tafel</string>
+    <string name="pin_setting_on">Es ist eine PIN gesetzt. Wer die Tafel verlassen will, muss sie eingeben.</string>
+    <string name="pin_setting_off">Keine PIN gesetzt. Die Tafel lässt sich durch langes Drücken am Griff verlassen.</string>
+    <string name="pin_set_up">PIN einrichten</string>
+    <string name="pin_change">PIN ändern</string>
+    <string name="pin_remove">PIN entfernen</string>
+    <string name="pinning_setting_title">Androids App-Fixierung</string>
+    <string name="pinning_on">Eingeschaltet. Die Home- und Übersichtstaste verlassen die Tafel nicht.</string>
+    <string name="pinning_off">Ausgeschaltet. Die Home- und Übersichtstaste verlassen die Tafel weiterhin — das kann nur in Androids Einstellungen geändert werden, nicht hier.</string>
+    <string name="pin_remove_title">PIN entfernen</string>
+    <string name="pin_remove_body">Gib die aktuelle PIN ein. Danach lässt sich die Tafel ohne PIN verlassen.</string>
+    <string name="menu_remove">Entfernen</string>
+    <string name="remove_title">„%1$s“ entfernen</string>
+    <string name="remove_body">Die Sammlung wird von diesem Gerät gelöscht — alle Tafeln, Bilder und Aufnahmen darin. Die Datei, aus der sie kam, bleibt unberührt.</string>
+    <string name="remove_confirm">Entfernen</string>
+
+    <!-- Die Sammlung, die beim nächsten Start aufgeht. -->
+    <string name="opens_next">öffnet sich</string>
+    <string name="reading_file">Die Datei wird gelesen …</string>
+    <string name="dismiss_notice">Meldung schließen</string>
+    <string name="warnings_title">Warnungen · %1$s</string>
+    <string name="done">Fertig</string>
+    <string name="warning_at_package">ganze Sammlung · %1$s</string>
+    <string name="warning_at_board">Tafel %1$s · %2$s</string>
+    <string name="warning_at_button">Tafel %1$s · Taste %2$s · %3$s</string>
+
+    <!--
+      Die zwei Wege herein, gefragt vor der Dateiauswahl und nicht statt ihr.
+      Die zweite Zeile trägt jeweils den Unterschied: er liegt darin, *wo* die
+      Sammlung ist, nicht darin, was mit ihr geschieht.
+    -->
+    <string name="add_where_from">Woher kommt sie?</string>
+    <string name="add_from_file">Vom Tablet holen</string>
+    <string name="add_from_file_sub">Eine Datei, die schon hier liegt</string>
+    <string name="add_from_network">Vom Rechner empfangen</string>
+    <string name="add_from_network_sub">Über das WLAN, direkt aus dem Editor</string>
+
+    <string name="receive_where">Vom Rechner empfangen</string>
+    <string name="receive_waiting">Wartet auf ein Paket.</string>
+    <string name="receive_hint">Diese Adresse im Editor eintragen. Solange dieser Bildschirm offen ist, nimmt das Tablet Pakete an.</string>
+    <!--
+      „Ein Paket“ und nicht sein Name, und das ist so gezeichnet (design 4c72d40).
+      Ein Name im Kopf der Anfrage wäre eine Behauptung des Absenders; der Name
+      im Paket ist die Tatsache. Erst die Behauptung zu zeigen und eine Sekunde
+      später die Tatsache ist der Weg, auf dem ein Bildschirm sich selbst
+      widerspricht. Die Größe steht im Kopf der Anfrage und ist das, was sich
+      vorher ehrlich sagen lässt; den Namen sagt die Ergebniszeile danach.
+    -->
+    <string name="receive_running">Ein Paket wird empfangen …</string>
+    <string name="receive_running_hint">%1$d MB. Das Tablet kann liegen bleiben.</string>
+    <string name="receive_port_busy">Dieses Tablet kann gerade nichts annehmen.</string>
+    <string name="receive_port_busy_hint">Ein anderes Programm belegt den Anschluss, über den Pakete ankommen. Meist hilft es, die App zu schließen und neu zu öffnen.</string>
+    <string name="receive_no_network">Dieses Tablet ist in keinem Netzwerk. Ohne WLAN gibt es keine Adresse, die im Editor stehen könnte.</string>
+</resources>

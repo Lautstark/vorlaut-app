@@ -7,9 +7,10 @@
   and the adult setting it up is not always speaking the language the tablet
   was set up in.
 
-  German is first because res/values is German; res/values-en is the
-  translation. Adding a third language means a res/values-xx and a line here,
-  in that order.
+  German is listed first because it is the language of the boards; res/values
+  is English, the fallback for any device language the app does not have, and
+  res/values-de is the German. Adding a third language means a res/values-xx
+  and a line here, in that order.
 -->
 <locale-config xmlns:android="http://schemas.android.com/apk/res/android">
     <locale android:name="de" />
