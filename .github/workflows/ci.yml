@@ -55,12 +55,12 @@ jobs:
           distribution: temurin
           java-version: "21"
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+        uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
       - name: Run parser unit tests
         run: ./gradlew :boardpackage:check
       - name: Upload parser test reports
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: parser-test-reports
           path: boardpackage/build/reports/tests/
@@ -78,7 +78,7 @@ jobs:
           distribution: temurin
           java-version: "21"
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+        uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
       - name: Assemble debug build
         run: ./gradlew :app:assembleDebug
       - name: Run app unit tests
@@ -87,7 +87,7 @@ jobs:
         run: ./gradlew :app:lintDebug
       - name: Upload lint report
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: android-lint-report
           path: app/build/reports/
@@ -105,7 +105,7 @@ jobs:
           distribution: temurin
           java-version: "21"
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+        uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
       - name: Check formatting
         run: ./gradlew spotlessCheck
 
@@ -140,7 +140,7 @@ jobs:
           distribution: temurin
           java-version: "21"
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+        uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
 
       - name: Derive a snapshot version
         id: version
@@ -165,7 +165,7 @@ jobs:
           key-password: ${{ secrets.RELEASE_KEY_PASSWORD }}
 
       - name: Upload the snapshot
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: vorlaut-main-${{ steps.version.outputs.short }}
           path: ${{ steps.apk.outputs.apk }}
@@ -213,7 +213,7 @@ jobs:
           distribution: temurin
           java-version: "21"
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+        uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
 
       # The version comes from the tag, or from what was typed into the button, and
       # is checked the same way either way - a typo in a form field is at least as
